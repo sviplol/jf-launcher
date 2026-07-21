@@ -1,7 +1,7 @@
 {
-  "name": "fast-mmd",
+  "name": "jf-launcher",
   "version": "1.0.0",
-  "description": "AI全自动部署 - AI API Platform Launcher",
+  "description": "JF自动部署 - AI API Platform Launcher",
   "type": "module",
   "scripts": {
     "dev": "vite",

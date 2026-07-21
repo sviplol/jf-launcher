@@ -1307,7 +1307,7 @@ fn read_claude_code_config() -> Result<Option<serde_json::Value>, String> {
         let model = env.get("ANTHROPIC_MODEL").and_then(|v| v.as_str()).unwrap_or("");
         let effort = data.get("effortLevel").and_then(|v| v.as_str()).unwrap_or("");
 
-        if base_url.contains("2bbb.cn") || auth_token.starts_with("fm-") {
+        if base_url.contains("ainb7.com") || auth_token.starts_with("fm-") {
             return Ok(Some(serde_json::json!({
                 "apiKey": auth_token,
                 "baseUrl": base_url,
@@ -1349,7 +1349,7 @@ fn read_workbuddy_config() -> Result<Option<serde_json::Value>, String> {
                     for m in arr {
                         let key = m.get("apiKey").and_then(|v| v.as_str()).unwrap_or("");
                         let url = m.get("url").and_then(|v| v.as_str()).unwrap_or("");
-                        if key.starts_with("fm-") || url.contains("2bbb.cn") {
+                        if key.starts_with("fm-") || url.contains("ainb7.com") {
                             return Ok(Some(serde_json::json!({
                                 "apiKey": key,
                                 "baseUrl": url,
@@ -1380,7 +1380,7 @@ fn read_workbuddy_config() -> Result<Option<serde_json::Value>, String> {
                                 let mid = m.get("id").and_then(|v| v.as_str()).unwrap_or("");
                                 let key = m.get("apiKey").and_then(|v| v.as_str()).unwrap_or("");
                                 let url = m.get("url").and_then(|v| v.as_str()).or_else(|| m.get("baseUrl").and_then(|v| v.as_str())).unwrap_or("");
-                                if mid.starts_with("custom-local:") && (key.starts_with("fm-") || url.contains("2bbb.cn")) {
+                                if mid.starts_with("custom-local:") && (key.starts_with("fm-") || url.contains("ainb7.com")) {
                                     return Ok(Some(serde_json::json!({
                                         "apiKey": key,
                                         "baseUrl": url,
@@ -1654,7 +1654,7 @@ fn check_claude_code_config() -> DiagnosticItem {
             match serde_json::from_str::<serde_json::Value>(&content) {
                 Ok(data) => {
                     let base_url = data.get("env").and_then(|e| e.get("ANTHROPIC_BASE_URL")).and_then(|v| v.as_str()).unwrap_or("");
-                    if base_url.contains("2bbb.cn") {
+                    if base_url.contains("ainb7.com") {
                         return DiagnosticItem { id: "cc_ok".into(), category: "Claude Code".into(), title: "配置正常".into(), status: "ok".into(), detail: format!("Base URL: {}", base_url), fixable: false, fix_action: "".into() };
                     }
                     DiagnosticItem { id: "cc_no_deploy".into(), category: "Claude Code".into(), title: "未部署我们的 API".into(), status: "warning".into(), detail: "当前配置指向其他服务".into(), fixable: true, fix_action: "deploy".into() }
@@ -1719,7 +1719,7 @@ fn check_workbuddy_config() -> DiagnosticItem {
                             let mid = m.get("id").and_then(|v| v.as_str()).unwrap_or("");
                             let key = m.get("apiKey").and_then(|v| v.as_str()).unwrap_or("");
                             let url = m.get("url").and_then(|v| v.as_str()).or_else(|| m.get("baseUrl").and_then(|v| v.as_str())).unwrap_or("");
-                            if mid.starts_with("custom-local:") && (key.starts_with("fm-") || url.contains("2bbb.cn")) {
+                            if mid.starts_with("custom-local:") && (key.starts_with("fm-") || url.contains("ainb7.com")) {
                                 found_count += 1;
                                 if !found_ok {
                                     found_ok = true;
@@ -2516,7 +2516,7 @@ fn get_error_explanation(code: &str, status: u16) -> String {
 fn get_error_fix_guide(code: &str, status: u16) -> String {
     match code {
         "insufficient_balance" | "402" => "1. 点击「充值」按钮购买新卡号\n2. 输入新卡号充值\n3. 重新部署".into(),
-        "not_found" | "404" => "1. 检查 API Key 是否以 fm- 开头\n2. 检查 Base URL 是否为 https://glm.2bbb.cn/v1\n3. 在平台中手动选择「自定义模型」\n4. 重新部署".into(),
+        "not_found" | "404" => "1. 检查 API Key 是否以 fm- 开头\n2. 检查 Base URL 是否为 https://jf.ainb7.com/v1\n3. 在平台中手动选择「自定义模型」\n4. 重新部署".into(),
         "rate_limit_error" | "429" => "1. 等待 30 秒后重试\n2. 减少并发请求\n3. 检查是否多个客户端同时使用同一 Key".into(),
         "11140" => "1. 系统会自动切换其他账号\n2. 如果持续报错，请等待几分钟后重试\n3. 可尝试点「自检」→「一键修复」".into(),
         "14003" => "1. 请求过多，等待 1 分钟后重试\n2. 降低使用频率".into(),
@@ -2537,7 +2537,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
         "404" | "not_found" => (
             "Key 无效或模型不存在",
             "API Key 错误、过期，或平台中未选择自定义模型",
-            "1. 确认 API Key 以 fm- 开头\n2. 确认 Base URL 为 https://glm.2bbb.cn/v1\n3. 在平台中手动选择「自定义模型」\n4. 如 Key 过期，重新激活卡号"
+            "1. 确认 API Key 以 fm- 开头\n2. 确认 Base URL 为 https://jf.ainb7.com/v1\n3. 在平台中手动选择「自定义模型」\n4. 如 Key 过期，重新激活卡号"
         ),
         "401" | "expired" => (
             "认证失败/Key过期",
@@ -2589,7 +2589,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 12;
+const APP_VERSION: u32 = 1;
 
 /// 获取当前软件版本号
 #[tauri::command]
@@ -2615,7 +2615,7 @@ async fn check_update() -> Result<UpdateCheckResult, String> {
         .build()
         .map_err(|e| e.to_string())?;
     let resp = client
-        .get("https://glm.2bbb.cn/api/fastmmd/version")
+        .get("https://jf.ainb7.com/api/fastmmd/version")
         .send()
         .await
         .map_err(|e| e.to_string())?;

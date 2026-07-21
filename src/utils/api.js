@@ -1,4 +1,4 @@
-const BASE_URLS = { glm: "https://glm.2bbb.cn", tk: "https://tk.2bbb.cn" };
+const BASE_URLS = { glm: "https://jf.ainb7.com", tk: "https://tk.ainb7.com" };
 const BASE = (p) => BASE_URLS[p] || BASE_URLS.glm;
 
 /// 打开外部链接（Tauri 环境用 Rust，Web 环境用 window.open）

@@ -1,12 +1,12 @@
 [package]
-name = "fast-mmd"
+name = "jf-launcher"
 version = "1.0.0"
-description = "AI全自动部署 - AI API Platform Launcher"
-authors = ["2bbb.cn"]
+description = "JF自动部署 - AI API Platform Launcher"
+authors = ["ainb7.com"]
 edition = "2021"
 
 [lib]
-name = "fast_mmd_lib"
+name = "jf_launcher_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

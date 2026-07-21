@@ -1030,24 +1030,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fast-mmd"
-version = "1.0.0"
-dependencies = [
- "base64 0.22.1",
- "dirs 5.0.1",
- "flate2",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-http",
- "tauri-plugin-shell",
- "tauri-plugin-single-instance",
- "winreg 0.52.0",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1941,6 +1923,24 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps",
+]
+
+[[package]]
+name = "jf-launcher"
+version = "1.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "dirs 5.0.1",
+ "flate2",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-http",
+ "tauri-plugin-shell",
+ "tauri-plugin-single-instance",
+ "winreg 0.52.0",
 ]
 
 [[package]]

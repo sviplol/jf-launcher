@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "AI全自动部署",
+  "productName": "JF自动部署",
   "version": "1.0.0",
-  "identifier": "cn.2bbb.fastmmd",
+  "identifier": "cn.ainb7.jflauncher",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "AI全自动部署",
+        "title": "JF自动部署",
         "width": 900,
         "height": 650,
         "resizable": true,

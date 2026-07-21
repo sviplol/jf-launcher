@@ -1,4 +1,4 @@
-name: Build Fast MMD
+name: Build JF Launcher
 
 on:
   push:
@@ -76,7 +76,7 @@ jobs:
           cp ${{ matrix.artifact_glob }} "upload/$FILENAME"
           # Windows: 额外生成免安装版(直接exe, 推荐)
           if [ "${{ matrix.platform }}" = "windows-latest" ]; then
-            cp src-tauri/target/release/fast-mmd.exe "upload/【推荐】Windows免安装版_v${{ steps.ver.outputs.version }}.exe"
+            cp src-tauri/target/release/jf-launcher.exe "upload/【推荐】Windows免安装版_v${{ steps.ver.outputs.version }}.exe"
           fi
           # Mac: 清除隔离属性, 防止"已损坏"提示
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then

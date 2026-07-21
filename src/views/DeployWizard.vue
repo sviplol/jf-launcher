@@ -268,7 +268,7 @@ async function doDeploy() {
   deploying.value = true;
   deployResults.value = [];
   try {
-    const baseUrl = "https://" + props.serverPlatform + ".2bbb.cn";
+    const baseUrl = "https://" + props.serverPlatform + ".ainb7.com";
     const orderedIds = [defaultModel.value, ...selectedModels.value.filter(id => id !== defaultModel.value)];
     const modelObjs = orderedIds.map(id => ALL_MODELS.find(m => m.id === id)).filter(Boolean);
     for (const p of selectedPlatforms.value) {

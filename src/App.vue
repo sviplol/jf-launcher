@@ -10,12 +10,12 @@
       <div class="wb-login-card">
         <div class="wb-logo">
           <span class="wb-logo-icon">⚡</span>
-          <span class="wb-logo-text">AI全自动部署</span>
+          <span class="wb-logo-text">JF自动部署</span>
         </div>
         <p class="wb-slogan">你的 AI 部署超能力</p>
         <select v-model="platform" class="wb-input" style="margin-bottom:12px">
-          <option value="glm">GLM 站 (glm.2bbb.cn) — 5200积分/20元</option>
-          <option value="tk">TK 站 (tk.2bbb.cn) — Token计费</option>
+          <option value="glm">JF 站 (jf.ainb7.com) — 5200积分/20元</option>
+          <option value="tk">TK 站 (tk.ainb7.com) — Token计费</option>
         </select>
         <input v-model="cardInput" class="wb-input" :placeholder="platform==='tk' ? '卡号 (666-XXXX...)' : '卡号 (5200-XXXX...)'" @keydown.enter="doActivate" :disabled="loading" />
         <button class="wb-btn-primary" @click="doActivate" :disabled="loading">{{ loading ? '验证中...' : '激 活' }}</button>
@@ -38,12 +38,12 @@
       <div class="wb-login-card">
         <div class="wb-logo">
           <span class="wb-logo-icon">⚡</span>
-          <span class="wb-logo-text">AI全自动部署</span>
+          <span class="wb-logo-text">JF自动部署</span>
         </div>
         <p class="wb-slogan">账号登录</p>
         <select v-model="platform" class="wb-input" style="margin-bottom:12px">
-          <option value="glm">GLM 站 (glm.2bbb.cn)</option>
-          <option value="tk">TK 站 (tk.2bbb.cn)</option>
+          <option value="glm">JF 站 (jf.ainb7.com)</option>
+          <option value="tk">TK 站 (tk.ainb7.com)</option>
         </select>
         <input v-model="username" class="wb-input" placeholder="用户名" style="margin-bottom:12px" @keydown.enter="doLogin" />
         <input v-model="password" type="password" class="wb-input" placeholder="密码" style="margin-bottom:12px" @keydown.enter="doLogin" />
@@ -61,12 +61,12 @@
       <div class="wb-login-card">
         <div class="wb-logo">
           <span class="wb-logo-icon">⚡</span>
-          <span class="wb-logo-text">AI全自动部署</span>
+          <span class="wb-logo-text">JF自动部署</span>
         </div>
         <p class="wb-slogan">注册新账号</p>
         <select v-model="platform" class="wb-input" style="margin-bottom:12px">
-          <option value="glm">GLM 站 (glm.2bbb.cn)</option>
-          <option value="tk">TK 站 (tk.2bbb.cn)</option>
+          <option value="glm">JF 站 (jf.ainb7.com)</option>
+          <option value="tk">TK 站 (tk.ainb7.com)</option>
         </select>
         <input v-model="username" class="wb-input" placeholder="用户名 (3-20位)" style="margin-bottom:12px" />
         <input v-model="password" type="password" class="wb-input" placeholder="密码 (6位以上)" style="margin-bottom:12px" />
@@ -189,7 +189,7 @@
       <div class="wb-modal changelog-modal">
         <div class="changelog-header">
           <span class="changelog-icon">🎉</span>
-          <h2>AI全自动部署 更新到 v{{ appVersion }}</h2>
+          <h2>JF自动部署 更新到 v{{ appVersion }}</h2>
         </div>
         <div class="changelog-list">
           <div v-for="(item, i) in (CHANGELOG[appVersion] || [])" :key="i" class="changelog-item">
@@ -302,66 +302,10 @@ const guideVideos = [
 ];
 
 const CHANGELOG = {
-  12: [
-    "新增漂浮客服按钮（未登录和主界面右下角）",
-    "新增客服二维码弹窗（微信扫码联系）",
-    "K3 上下文提升至 1M（全平台部署配置同步生效）",
-    "教程弹窗改为视频卡片样式（与网站一致）",
-    "未登录页新增教程入口按钮",
-    "消费记录区域新增卡密30天倒计时显示",
-  ],
-  11: [
-    "新增 Kimi K3 模型",
-    "新增使用教程页面（各平台接入配置+视频教程）",
-  ],
-  10: [
-    "修复双击打开没反应问题（窗口销毁后自动重建主窗口）",
-    "修复 Mac 安装提示「已损坏」问题（CI编译后自动清除隔离属性）",
-  ],
-  9: [
-    "彻底修复 WorkBuddy/CodeBuddy 自定义模型无法添加/保存后消失问题",
-    "models.json 格式从数组改为对象 {\"models\":[...]} (WorkBuddy Provider只认对象格式)",
-    "读取文件时自动去除 UTF-8 BOM 防止 JSON.parse 失败",
-    "vendor 统一为 user, tags 为 custom (WorkBuddy getModelsInfo 只认 user)",
-    "local_storage 不存在时自动创建目录和空 entry 文件 (不再报错)",
-  ],
-  8: [
-    "修复 WorkBuddy/CodeBuddy 问号消耗倍率图标（加 descriptionZh/credits/官方 reasoning 格式）",
-    "WorkBuddy 官方模型保留，不再被覆盖",
-    "CodeBuddy 官方模型保留（之前被覆盖只剩 HY3）",
-  ],
-  7: [
-    "修复 WorkBuddy/CodeBuddy 自定义模型保存后消失问题（去掉 useCustomProtocol/aliases 等不兼容字段）",
-    "修复 CodeBuddy 部署后官方模型消失问题（保留官方模型，只追加自定义模型）",
-    "自定义模型格式完全对齐官方（vendor图标+relatedModels+craft+temperature）",
-    "Auto 模型显示名改为「自动模式（智能选择）」",
-  ],
-  6: [
-    "推理等级永久拉满：WorkBuddy/CodeBuddy 全局 reasoningEffort=xhigh + alwaysThinkingEnabled=true",
-    "部署时自动写入全局配置文件，无需手动 /config set",
-    "全模型 reasoning.available 增加 xhigh 档位",
-    "修复 OpenCode reasoningEffort 保持 max 不被降级",
-    "修复 WorkBuddy 新版 entry 格式部署（裸JSON+gzip双格式）",
-    "修复 isDefault 冲突：清除官方模型默认选中，强制选中我们的模型",
-    "全平台 maxInputTokens 对齐后端真实值（GLM-5.2=1M，Auto=1M）",
-  ],
-  4: [
-    "新增 Auto 自动模式：根据任务难度智能分配模型，节省 Token",
-    "新增 Claude Code 支持：后端支持 Anthropic /v1/messages 端点",
-    "新增自检代理检测：自动检测系统代理并一键修复",
-    "新增更新内容弹窗：每次更新首次打开显示新功能",
-    "优化免安装版文件命名，更醒目易识别",
-    "Mac 版增加已损坏修复说明",
-  ],
-  3: [
-    "新增强制更新机制",
-    "新增消费记录和充值记录显示",
-    "优化余额显示精度",
-  ],
-  2: [
-    "新增6平台一键部署支持",
-    "新增卡号激活和账号登录",
-    "新增自检功能",
+  1: [
+    "JF自动部署 v1 初始化",
+    "基于 Fast MMD v12 全部功能",
+    "支持 jf.ainb7.com / tk.ainb7.com 双站",
   ],
 };
 

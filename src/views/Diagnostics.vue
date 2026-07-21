@@ -49,7 +49,7 @@
           <label>API Key</label>
           <input v-model="testKey" class="ct-input" placeholder="fm-XXXX..." />
           <label>Base URL</label>
-          <input v-model="testUrl" class="ct-input" placeholder="https://glm.2bbb.cn" />
+          <input v-model="testUrl" class="ct-input" placeholder="https://jf.ainb7.com" />
           <label>模型</label>
           <select v-model="testModel" class="ct-input">
             <option value="glm-5.2">glm-5.2 (推荐)</option>
@@ -120,7 +120,7 @@ const fixResult = ref(null);
 
 // 对话检测
 const testKey = ref("");
-const testUrl = ref("https://glm.2bbb.cn");
+const testUrl = ref("https://jf.ainb7.com");
 const testModel = ref("glm-5.2");
 const chatTesting = ref(false);
 const chatResult = ref(null);
@@ -146,8 +146,8 @@ async function runDiagnostics() {
 
     // 1. 网络
     try {
-      const r = await fetch("https://glm.2bbb.cn/api/settings", { signal: AbortSignal.timeout(5000) });
-      diag.push({ id:"net", category:"网络", title: r.ok ? "服务器连接正常" : "服务器响应异常", status: r.ok?"ok":"warning", detail: r.ok?"glm.2bbb.cn 可达":`HTTP ${r.status}`, fixable:false, fix_action:"" });
+      const r = await fetch("https://jf.ainb7.com/api/settings", { signal: AbortSignal.timeout(5000) });
+      diag.push({ id:"net", category:"网络", title: r.ok ? "服务器连接正常" : "服务器响应异常", status: r.ok?"ok":"warning", detail: r.ok?"jf.ainb7.com 可达":`HTTP ${r.status}`, fixable:false, fix_action:"" });
     } catch(e) {
       diag.push({ id:"net", category:"网络", title:"无法连接服务器", status:"error", detail:"检查网络/VPN/防火墙", fixable:false, fix_action:"" });
     }
