@@ -1,5 +1,8 @@
-const BASE_URLS = { glm: "https://jf.ainb7.com", tk: "https://tk.ainb7.com" };
-const BASE = (p) => BASE_URLS[p] || BASE_URLS.glm;
+const BASE_URLS = { jf: "https://jf.ainb7.com", tk: "https://tk.ainb7.com" };
+// 兼容老用户 localStorage 里存的 "glm"，统一映射到 jf
+const PLAT_ALIAS = { glm: "jf" };
+const normPlat = (p) => PLAT_ALIAS[p] || p;
+const BASE = (p) => BASE_URLS[normPlat(p)] || BASE_URLS.jf;
 
 /// 打开外部链接（Tauri 环境用 Rust，Web 环境用 window.open）
 export async function openLink(url) {

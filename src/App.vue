@@ -14,7 +14,7 @@
         </div>
         <p class="wb-slogan">你的 AI 部署超能力</p>
         <select v-model="platform" class="wb-input" style="margin-bottom:12px">
-          <option value="glm">JF 站 (jf.ainb7.com) — 5200积分/20元</option>
+          <option value="jf">JF 站 (jf.ainb7.com) — 5200积分/20元</option>
           <option value="tk">TK 站 (tk.ainb7.com) — Token计费</option>
         </select>
         <input v-model="cardInput" class="wb-input" :placeholder="platform==='tk' ? '卡号 (666-XXXX...)' : '卡号 (5200-XXXX...)'" @keydown.enter="doActivate" :disabled="loading" />
@@ -42,7 +42,7 @@
         </div>
         <p class="wb-slogan">账号登录</p>
         <select v-model="platform" class="wb-input" style="margin-bottom:12px">
-          <option value="glm">JF 站 (jf.ainb7.com)</option>
+          <option value="jf">JF 站 (jf.ainb7.com)</option>
           <option value="tk">TK 站 (tk.ainb7.com)</option>
         </select>
         <input v-model="username" class="wb-input" placeholder="用户名" style="margin-bottom:12px" @keydown.enter="doLogin" />
@@ -65,7 +65,7 @@
         </div>
         <p class="wb-slogan">注册新账号</p>
         <select v-model="platform" class="wb-input" style="margin-bottom:12px">
-          <option value="glm">JF 站 (jf.ainb7.com)</option>
+          <option value="jf">JF 站 (jf.ainb7.com)</option>
           <option value="tk">TK 站 (tk.ainb7.com)</option>
         </select>
         <input v-model="username" class="wb-input" placeholder="用户名 (3-20位)" style="margin-bottom:12px" />
@@ -247,7 +247,7 @@ const cardInput = ref("");
 const username = ref("");
 const password = ref("");
 const password2 = ref("");
-const platform = ref("glm");
+const platform = ref("jf");
 const apiKey = ref("");
 const userToken = ref("");
 const balance = ref(0);
@@ -418,7 +418,7 @@ async function doActivate() {
       if (verify.ok) {
         apiKey.value = saved.apiKey;
         balance.value = verify.balance || saved.balance || 0;
-        platform.value = saved.platform || "glm";
+        platform.value = (saved.platform === "glm" ? "jf" : saved.platform) || "jf";
         showToast("卡号已激活，直接进入", "success");
         stage.value = "ready";
         loading.value = false;
@@ -603,11 +603,11 @@ try {
   const saved = store.get();
   if (saved.apiKey) {
     // 验证 key — 如果被封禁/删除 lookup 会返回错误
-    lookup(saved.platform || "glm", saved.apiKey).then(r => {
+    lookup(saved.platform || "jf", saved.apiKey).then(r => {
       if (r.ok) {
         apiKey.value = saved.apiKey;
         balance.value = r.balance || saved.balance || 0;
-        platform.value = saved.platform || "glm";
+        platform.value = (saved.platform === "glm" ? "jf" : saved.platform) || "jf";
         cardInput.value = saved.card || "";
         stage.value = "main";
       } else {
@@ -621,7 +621,7 @@ try {
     userToken.value = saved.token;
     username.value = saved.username || "";
     balance.value = saved.balance || 0;
-    platform.value = saved.platform || "glm";
+    platform.value = (saved.platform === "glm" ? "jf" : saved.platform) || "jf";
     apiKey.value = saved.apiKey || "";
     stage.value = "main";
   }

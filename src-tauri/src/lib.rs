@@ -1324,15 +1324,26 @@ fn read_claude_code_config() -> Result<Option<serde_json::Value>, String> {
 fn read_codebuddy_config() -> Result<Option<serde_json::Value>, String> {
     let cb_path = detect_codebuddy().path.ok_or("CodeBuddy 未安装")?;
     let base = PathBuf::from(&cb_path);
-    let config_path = base.join("glm_deploy_config.json");
+    // 部署时写的是 models.json，检测也应读它（旧版读 glm_deploy_config.json 是死代码）
+    let config_path = base.join("models.json");
     if config_path.exists() {
         let content = fs::read_to_string(&config_path).map_err(|e| format!("读取失败: {}", e))?;
-        let data: serde_json::Value = serde_json::from_str(&content).unwrap_or(serde_json::json!({}));
-        return Ok(Some(serde_json::json!({
-            "apiKey": data.get("api_key").and_then(|v| v.as_str()).unwrap_or(""),
-            "deployed": true,
-            "platform": "codebuddy",
-        })));
+        let content = content.trim_start_matches('\u{feff}'); // 去 BOM
+        let data: serde_json::Value = serde_json::from_str(content).unwrap_or(serde_json::json!({}));
+        // models.json 结构 {"models":[{apiKey,url,...}]}，找我们的 key
+        let arr = data.get("models").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+        for m in arr {
+            let key = m.get("apiKey").and_then(|v| v.as_str()).unwrap_or("");
+            let url = m.get("url").and_then(|v| v.as_str()).unwrap_or("");
+            if key.starts_with("fm-") || url.contains("ainb7.com") {
+                return Ok(Some(serde_json::json!({
+                    "apiKey": key,
+                    "baseUrl": url,
+                    "deployed": true,
+                    "platform": "codebuddy",
+                })));
+            }
+        }
     }
     Ok(None)
 }
@@ -2405,7 +2416,13 @@ fn restart_app(platform: String) -> Result<String, String> {
 /// 对话检测 — 用用户的 API Key 发一个最小请求，验证是否可用
 #[tauri::command]
 fn test_api_call(api_key: String, base_url: String, model: String) -> Result<serde_json::Value, String> {
-    let url = format!("{}/v1/chat/completions", base_url.trim_end_matches('/'));
+    // base_url 可能已带 /v1（与 deploy 逻辑对齐，避免 /v1/v1 双前缀导致 404）
+    let base = base_url.trim_end_matches('/');
+    let url = if base.ends_with("/v1") {
+        format!("{}/chat/completions", base)
+    } else {
+        format!("{}/v1/chat/completions", base)
+    };
     let body = serde_json::json!({
         "model": model,
         "messages": [{"role": "user", "content": "说一个字"}],
@@ -2658,7 +2675,7 @@ pub fn run() {
                         &app_handle, "main",
                         WebviewUrl::App("index.html".into()),
                     )
-                    .title("GLM API 平台登录器")
+                    .title("JF自动部署")
                     .inner_size(900.0, 650.0)
                     .resizable(true)
                     .center()

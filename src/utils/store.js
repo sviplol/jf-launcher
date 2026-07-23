@@ -11,5 +11,8 @@ export const store = {
   },
   clear() { localStorage.removeItem(STORE_KEY); },
   getApiKey() { return this.get().apiKey || ""; },
-  getPlatform() { return this.get().platform || "glm"; },
+  getPlatform() {
+    const p = this.get().platform || "jf";
+    return p === "glm" ? "jf" : p; // 兼容老数据
+  },
 };

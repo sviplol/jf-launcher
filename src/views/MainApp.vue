@@ -314,7 +314,8 @@ const toast = reactive({ show:false, msg:"", type:"info" });
 // 软件logo图标（引用Tauri图标资源）
 const logoIcon = "/icons/32x32.png";
 
-const baseUrl = computed(() => "https://" + props.serverPlatform + ".ainb7.com/v1");
+const domainMap = { glm: "jf", tk: "tk" };
+const baseUrl = computed(() => "https://" + (domainMap[props.serverPlatform] || props.serverPlatform) + ".ainb7.com/v1");
 const remaining = computed(() => usage.value.quota > 0 ? usage.value.quota - (usage.value.used||0) : (usage.value.balance||0));
 const unit = computed(() => props.serverPlatform === 'tk' ? 'Token' : '积分');
 
