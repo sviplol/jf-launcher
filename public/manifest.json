@@ -1,7 +1,7 @@
 {
-  "name": "GLM API Launcher",
-  "short_name": "GLM Launcher",
-  "description": "GLM/TK API 平台登录器 — 全模型一键部署",
+  "name": "JF自动部署",
+  "short_name": "JF自动部署",
+  "description": "JF/TK API 平台登录器 — 全模型一键部署",
   "icons": [
     {
       "src": "icons/32x32.png",

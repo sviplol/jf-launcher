@@ -1,4 +1,4 @@
-# GLM API 平台登录器
+# JF自动部署
 
 基于 Tauri 2 + Vue 3 + Ant Design 的桌面客户端。
 
@@ -38,9 +38,9 @@ npm run tauri build
 
 ## 配置说明
 
-- GLM 站: https://glm.2bbb.cn
-- TK 站: https://tk.2bbb.cn
-- API Base URL: https://glm.2bbb.cn/v1 或 https://tk.2bbb.cn/v1
+- JF 站: https://jf.ainb7.com
+- TK 站: https://tk.ainb7.com
+- API Base URL: https://jf.ainb7.com/v1 或 https://tk.ainb7.com/v1
 - API Key 格式: fm-xxxxxxxxxxxx
 
 ## 技术栈
