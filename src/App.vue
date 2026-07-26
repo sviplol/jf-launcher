@@ -13,11 +13,7 @@
           <span class="wb-logo-text">JF自动部署</span>
         </div>
         <p class="wb-slogan">你的 AI 部署超能力</p>
-        <select v-model="platform" class="wb-input" style="margin-bottom:12px">
-          <option value="jf">JF 站 (jf.ainb7.com) — 5200积分/20元</option>
-          <option value="tk">TK 站 (tk.ainb7.com) — Token计费</option>
-        </select>
-        <input v-model="cardInput" class="wb-input" placeholder="请输入卡密" @keydown.enter="doActivate" :disabled="loading" />
+        <input v-model="cardInput" class="wb-input" placeholder="请输入卡密（自动识别 JF/TK 站）" @keydown.enter="doActivate" :disabled="loading" style="margin-bottom:12px" />
         <button class="wb-btn-primary" @click="doActivate" :disabled="loading">{{ loading ? '验证中...' : '激 活' }}</button>
         <div class="wb-links">
           <a @click="stage='login'">账号登录</a>
@@ -170,8 +166,8 @@
         <div class="confirm-title">{{ confirmDialog.title }}</div>
         <div class="confirm-msg">{{ confirmDialog.msg }}</div>
         <div class="confirm-btns">
-          <button class="wb-btn-cancel" @click="confirmDialog.onCancel">取消</button>
-          <button class="wb-btn-ok" @click="confirmDialog.onOk">确定</button>
+          <button class="wb-btn-cancel" @click="confirmDialog.onCancel">{{ confirmDialog.cancelText }}</button>
+          <button class="wb-btn-ok" @click="confirmDialog.onOk">{{ confirmDialog.okText }}</button>
         </div>
       </div>
     </div>
@@ -259,7 +255,7 @@ const showGuide = ref(false);
 const showQR = ref(false);
 const prevStage = ref("activate");
 const toast = reactive({ show: false, msg: "", type: "info" });
-const confirmDialog = reactive({ show: false, title: "确认", msg: "", onOk: null, onCancel: null });
+const confirmDialog = reactive({ show: false, title: "确认", msg: "", okText: "确定", cancelText: "取消", onOk: null, onCancel: null });
 const updateInfo = reactive({ show: false, current: 0, latest: 0, url: "" });
 const appVersion = ref(0);
 const checkingUpdate = ref(false);
@@ -309,12 +305,21 @@ const CHANGELOG = {
   ],
 };
 
-function showConfirm(title, msg, onOk) {
+function showConfirm(title, msg, onOk, okText = "确定", cancelText = "取消") {
   confirmDialog.show = true;
   confirmDialog.title = title;
   confirmDialog.msg = msg;
+  confirmDialog.okText = okText;
+  confirmDialog.cancelText = cancelText;
   confirmDialog.onOk = () => { confirmDialog.show = false; if (onOk) onOk(); };
   confirmDialog.onCancel = () => { confirmDialog.show = false; };
+}
+
+// 卡号不存在弹窗：提示 + 购买卡密按钮
+function showCardNotFound(msg) {
+  showConfirm("卡号不存在", (msg || "卡号不存在") + "\n如需使用请先购买卡密", () => {
+    openShop();
+  }, "购买卡密", "取消");
 }
 
 const PLATFORM_LABELS = {
@@ -403,7 +408,7 @@ function validateCard(card) {
   return { valid: true, isKey: false, cleaned };
 }
 
-// 卡号激活
+// 卡号激活（自动识别 JF/TK 站，无需用户选择）
 async function doActivate() {
   const raw = cardInput.value.trim();
   if (!raw) { showToast("请输入卡号", "error"); return; }
@@ -431,23 +436,51 @@ async function doActivate() {
       }
     }
 
-    // 2. 兑换卡号（服务器端支持已使用卡号重新登录）
-    const r = await redeemCard(platform.value, cleaned, "");
-    if (r.ok) {
-      apiKey.value = r.key;
-      balance.value = r.balance || 0;
-      store.set({ apiKey: r.key, balance: r.balance || 0, platform: platform.value, card: cleaned });
-      showToast("登录成功", "success");
-      stage.value = "ready";
-    } else if (r.msg && (r.msg.includes("不存在") || r.msg.includes("封禁") || r.msg.includes("删除"))) {
-      // 卡号被封禁/删除
-      showToast(r.msg, "error");
-    } else if (r.msg && r.msg.includes("已使用")) {
-      // 不应该走到这里了（服务器已支持重新登录），但兜底
-      showToast("此卡号已使用，请用账号登录", "error");
-      setTimeout(() => { stage.value = "login"; }, 1500);
-    } else {
-      showToast(r.msg || "卡号无效", "error");
+    // 2. 自动调度：依次尝试 JF 站和 TK 站，哪个站能识别这张卡密就用哪个
+    const tryStations = ["jf", "tk"];
+    let lastMsg = "卡号无效";
+    let matched = false;
+    let allNotFound = true; // 是否所有站都返回"不存在"
+    for (const station of tryStations) {
+      let r;
+      try {
+        r = await redeemCard(station, cleaned, "");
+      } catch(e) {
+        continue; // 网络错误试下一站
+      }
+      if (r.ok) {
+        // 兑换成功，记录实际命中的站
+        apiKey.value = r.key;
+        balance.value = r.balance || 0;
+        platform.value = station;
+        store.set({ apiKey: r.key, balance: r.balance || 0, platform: station, card: cleaned });
+        showToast("登录成功", "success");
+        stage.value = "ready";
+        matched = true;
+        break;
+      } else if (r.msg && r.msg.includes("不存在")) {
+        lastMsg = r.msg;
+        continue; // 卡号不存在，试下一站
+      } else {
+        // 封禁/删除/已使用等其他错误，直接提示，不再试下一站
+        allNotFound = false;
+        lastMsg = r.msg || "卡号无效";
+        if (r.msg && r.msg.includes("已使用")) {
+          showToast("此卡号已使用，请用账号登录", "error");
+          setTimeout(() => { stage.value = "login"; }, 1500);
+          loading.value = false;
+          return;
+        }
+        break;
+      }
+    }
+    if (!matched) {
+      // 所有站都返回"不存在"时，弹出购买卡密对话框
+      if (allNotFound) {
+        showCardNotFound(lastMsg);
+      } else {
+        showToast(lastMsg, "error");
+      }
     }
   } catch(e) { showToast("网络错误: " + e.message, "error"); }
   finally { loading.value = false; }
