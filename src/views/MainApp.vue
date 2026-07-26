@@ -133,7 +133,7 @@
           </div>
           <div class="wb-recharge-card">
             <div class="wb-recharge-title">卡密充值</div>
-            <input v-model="rechargeCard" class="wb-input" placeholder="输入新卡号 (5200-XXXX...)" />
+            <input v-model="rechargeCard" class="wb-input" placeholder="请输入卡密" />
             <button class="wb-btn-primary" @click="doRecharge" :disabled="recharging">{{recharging?'充值中...':'充 值'}}</button>
           </div>
         </div>
@@ -157,7 +157,7 @@
         </div>
         <div class="wb-modal-body">
           <div class="wb-mini-promo" @click="openShop">好评送300{{unit}}！5图好评+联系客服→免费领卡密</div>
-          <input v-model="rechargeCard" class="wb-input" placeholder="输入卡号 (5200-XXXX...)" />
+          <input v-model="rechargeCard" class="wb-input" placeholder="请输入卡密" />
           <button class="wb-btn-primary" @click="doRecharge" :disabled="recharging">{{recharging?'充值中...':'确认充值'}}</button>
           <button class="wb-btn-secondary" @click="openShop">购买卡号</button>
           <button class="wb-btn-cancel" @click="showRecharge=false">取消</button>

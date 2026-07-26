@@ -17,7 +17,7 @@
           <option value="jf">JF 站 (jf.ainb7.com) — 5200积分/20元</option>
           <option value="tk">TK 站 (tk.ainb7.com) — Token计费</option>
         </select>
-        <input v-model="cardInput" class="wb-input" :placeholder="platform==='tk' ? '卡号 (666-XXXX...)' : '卡号 (5200-XXXX...)'" @keydown.enter="doActivate" :disabled="loading" />
+        <input v-model="cardInput" class="wb-input" placeholder="请输入卡密" @keydown.enter="doActivate" :disabled="loading" />
         <button class="wb-btn-primary" @click="doActivate" :disabled="loading">{{ loading ? '验证中...' : '激 活' }}</button>
         <div class="wb-links">
           <a @click="stage='login'">账号登录</a>
@@ -394,11 +394,13 @@ function goDownload() {
   if (updateInfo.url) openLink(updateInfo.url);
 }
 
-// 卡号格式校验 + 过滤前缀
+// 卡号校验：只拦 fm- 开头的 API 密钥（用户误填），其他前缀一律放行给后端判断
 function validateCard(card) {
   // 自动过滤"卡号："、"卡号:"、"卡号 "等前缀
   let cleaned = card.replace(/^卡号[：:\s]*/i, '').replace(/^card[：:\s]*/i, '').trim();
-  return { valid: /^[0-9]+-[A-Z0-9]+$/i.test(cleaned), cleaned };
+  // fm- 开头的是 API 密钥不是卡密
+  if (/^fm-/i.test(cleaned)) return { valid: false, isKey: true, cleaned };
+  return { valid: true, isKey: false, cleaned };
 }
 
 // 卡号激活
@@ -406,8 +408,11 @@ async function doActivate() {
   const raw = cardInput.value.trim();
   if (!raw) { showToast("请输入卡号", "error"); return; }
   // 过滤"卡号："等前缀
-  const { valid, cleaned } = validateCard(raw);
-  if (!valid) { showToast("卡号格式不正确，应为 5200-XXXX 格式", "error"); return; }
+  const { valid, isKey, cleaned } = validateCard(raw);
+  if (!valid) {
+    showToast(isKey ? "请输入卡密，不是 fm- 开头的密钥" : "卡号格式不正确", "error");
+    return;
+  }
   loading.value = true;
   try {
     // 1. 先查本地记录，避免重复兑换
