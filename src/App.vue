@@ -692,7 +692,7 @@ input, textarea, select { user-select:text; -webkit-user-select:text; -webkit-ap
 .wb-ready-title { color:var(--wb-text); font-size:24px; font-weight:700; margin-bottom:12px; }
 .wb-ready-balance { font-size:16px; color:var(--wb-text-secondary); margin-bottom:32px; }
 .wb-ready-balance b { color:var(--wb-primary); font-size:20px; }
-.wb-btn-deploy { width:320px; height:56px; border:none; border-radius:var(--wb-radius); background:var(--wb-primary); color:#fff; font-size:18px; font-weight:600; cursor:pointer; box-shadow:0 4px 16px rgba(0,180,42,.3); transition:all .2s; }
+.wb-btn-deploy { width:320px; height:56px; min-height:56px; border:none; border-radius:var(--wb-radius); background:var(--wb-primary); color:#fff; font-size:18px; font-weight:600; cursor:pointer; box-shadow:0 4px 16px rgba(0,180,42,.3); transition:all .2s; white-space:nowrap; }
 .wb-btn-deploy:hover { background:var(--wb-primary-dark); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,180,42,.4); }
 .wb-btn-skip { display:block; margin:16px auto 0; background:none; border:none; color:var(--wb-text-tertiary); font-size:14px; cursor:pointer; }
 .wb-btn-skip:hover { color:var(--wb-text-secondary); }
