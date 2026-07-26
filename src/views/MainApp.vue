@@ -461,14 +461,14 @@ async function doClearDeploy() {
 .wb-deploy-title { font-size:17px; font-weight:700; letter-spacing:.5px; line-height:1.2; white-space:nowrap; }
 .wb-deploy-subtitle { font-size:11px; opacity:.85; font-weight:400; line-height:1.2; white-space:nowrap; }
 
-.wb-sidebar-menu { flex:1; padding:0 8px; }
+.wb-sidebar-menu { flex:1; padding:0 8px; overflow-y:auto; }
 .wb-menu-item { width:100%; height:44px; border:none; border-radius:var(--wb-radius); background:none; cursor:pointer; display:flex; align-items:center; gap:12px; padding:0 16px; margin-bottom:4px; transition:all .2s; color:var(--wb-text-secondary); }
 .wb-menu-item:hover { background:var(--wb-bg); color:var(--wb-text); }
 .wb-menu-item.active { background:var(--wb-primary-light); color:var(--wb-primary); font-weight:600; }
 .wb-menu-icon { font-size:18px; }
 .wb-menu-label { font-size:14px; }
 
-.wb-sidebar-footer { padding:16px; border-top:1px solid var(--wb-border); }
+.wb-sidebar-footer { padding:16px; border-top:1px solid var(--wb-border); flex-shrink:0; }
 .wb-balance-card { background:var(--wb-primary-light); border-radius:var(--wb-radius); padding:12px; margin-bottom:12px; text-align:center; }
 .wb-balance-label { font-size:12px; color:var(--wb-text-secondary); margin-bottom:4px; }
 .wb-balance-value { font-size:20px; font-weight:700; color:var(--wb-primary); }
