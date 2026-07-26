@@ -81,7 +81,7 @@
       <div class="wb-ready-card">
         <div class="wb-ready-icon">✅</div>
         <h1 class="wb-ready-title">{{ readyTitle }}</h1>
-        <p class="wb-ready-balance">余额: <b>{{ balance.toFixed(2) }}</b> {{ platform==='tk' ? 'Token' : '积分' }}</p>
+        <p class="wb-ready-balance">余额: <b>{{ platform==='tk' ? disp(balance).toLocaleString() : disp(balance).toFixed(2) }}</b> {{ platform==='tk' ? 'Token' : '积分' }}</p>
         <button class="wb-btn-deploy" @click="stage='wizard'">🚀 一键部署</button>
         <button class="wb-btn-skip" @click="confirmSkip">跳过，直接进入</button>
       </div>
@@ -115,7 +115,7 @@
             <button class="wb-copy-mini" @click="copyText(queryResult.apiKey)">📋</button>
           </div>
           <div v-if="queryResult.balance !== null && queryResult.balance !== undefined" class="wb-query-balance">
-            剩余: <b>{{ Number(queryResult.balance).toFixed(2) }}</b> {{ platform==='tk' ? 'Token' : '积分' }}
+            剩余: <b>{{ platform==='tk' ? disp(queryResult.balance).toLocaleString() : disp(queryResult.balance).toFixed(2) }}</b> {{ platform==='tk' ? 'Token' : '积分' }}
           </div>
         </div>
 
@@ -338,6 +338,13 @@ const PLATFORM_LABELS = {
 };
 
 const readyTitle = computed(() => apiKey.value ? "激活成功" : userToken.value ? "登录成功" : "就绪");
+
+// TK站后端返回的是积分，1积分=15002 Token，显示时换算成Token整数；JF站直接显示积分
+const TOKEN_RATE = 15002;
+const disp = (v) => {
+  const n = Number(v) || 0;
+  return platform.value === 'tk' ? Math.round(n * TOKEN_RATE) : n;
+};
 
 function showToast(msg, type = "info") {
   toast.show = true; toast.msg = msg; toast.type = type;

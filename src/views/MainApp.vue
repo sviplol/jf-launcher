@@ -28,7 +28,7 @@
       <div class="wb-sidebar-footer">
         <div class="wb-balance-card">
           <div class="wb-balance-label">余额({{unit}})</div>
-          <div class="wb-balance-value">{{(balance||0).toFixed(2)}}</div>
+          <div class="wb-balance-value">{{serverPlatform==='tk' ? disp(balance).toLocaleString() : disp(balance).toFixed(2)}}</div>
         </div>
         <button class="wb-sidebar-btn" @click="showRecharge=true"><span class="wb-btn-icon">💰</span>充值</button>
         <button class="wb-sidebar-btn" @click="showDiag=true"><span class="wb-btn-icon">🔧</span>自检</button>
@@ -56,7 +56,7 @@
           <div class="wb-stats-grid">
             <div class="wb-stat-card">
               <div class="wb-stat-label">余额({{unit}})</div>
-              <div class="wb-stat-value green">{{(balance||0).toFixed(2)}}</div>
+              <div class="wb-stat-value green">{{serverPlatform==='tk' ? disp(balance).toLocaleString() : disp(balance).toFixed(2)}}</div>
             </div>
             <div class="wb-stat-card">
               <div class="wb-stat-label">请求次数</div>
@@ -64,11 +64,11 @@
             </div>
             <div class="wb-stat-card">
               <div class="wb-stat-label">消耗({{unit}})</div>
-              <div class="wb-stat-value red">{{(usage.used||0).toFixed(2)}}</div>
+              <div class="wb-stat-value red">{{serverPlatform==='tk' ? disp(usage.used).toLocaleString() : disp(usage.used).toFixed(2)}}</div>
             </div>
             <div class="wb-stat-card">
               <div class="wb-stat-label">剩余({{unit}})</div>
-              <div class="wb-stat-value blue">{{remaining.toFixed(0)}}</div>
+              <div class="wb-stat-value blue">{{serverPlatform==='tk' ? remaining.toLocaleString() : remaining.toFixed(0)}}</div>
             </div>
           </div>
           
@@ -90,14 +90,14 @@
           <div v-if="usage.quota_records && usage.quota_records.length" class="wb-quota-section">
             <div class="wb-section-title">⏳ 卡密倒计时</div>
             <div v-for="(r,i) in usage.quota_records" :key="'q'+i" class="wb-quota-row" :class="{expired: r.status==='expired'}">
-              <span v-if="r.status==='active'" class="q-active">
-                {{r.amount}}{{unit}}（剩{{r.remaining}}）
-                <span :style="{color: r.days_left<=3?'#f53f3f':r.days_left<=7?'#ff7d00':'#86909c'}">{{r.days_left}}天后到期</span>
-                · {{r.expire_date}}
-              </span>
-              <span v-else class="q-expired">
-                ✕ {{r.amount}}{{unit}}（已用{{r.used}}）已到期作废，扣除{{r.deducted}}{{unit}} · {{r.expire_date}}
-              </span>
+               <span v-if="r.status==='active'" class="q-active">
+                 {{serverPlatform==='tk' ? disp(r.amount).toLocaleString() : disp(r.amount).toFixed(0)}}{{unit}}（剩{{serverPlatform==='tk' ? disp(r.remaining).toLocaleString() : disp(r.remaining).toFixed(0)}}）
+                 <span :style="{color: r.days_left<=3?'#f53f3f':r.days_left<=7?'#ff7d00':'#86909c'}">{{r.days_left}}天后到期</span>
+                 · {{r.expire_date}}
+               </span>
+               <span v-else class="q-expired">
+                 ✕ {{serverPlatform==='tk' ? disp(r.amount).toLocaleString() : disp(r.amount).toFixed(0)}}{{unit}}（已用{{serverPlatform==='tk' ? disp(r.used).toLocaleString() : disp(r.used).toFixed(0)}}）已到期作废，扣除{{serverPlatform==='tk' ? disp(r.deducted).toLocaleString() : disp(r.deducted).toFixed(0)}}{{unit}} · {{r.expire_date}}
+               </span>
             </div>
           </div>
           
@@ -105,7 +105,7 @@
             <div class="wb-section-title">📋 充值记录</div>
             <div v-for="(r,i) in usage.recharge_items" :key="'r'+i" class="wb-recharge-row">
               <span class="r-code" @click="copy(r.code)">{{r.code}}</span>
-              <span class="r-amount">+{{Number(r.amount).toFixed(2)}}</span>
+               <span class="r-amount">+{{serverPlatform==='tk' ? disp(r.amount).toLocaleString() : disp(r.amount).toFixed(2)}}</span>
               <span class="r-time">{{(r.time||'').replace('T',' ').replace('Z','')}}</span>
             </div>
           </div>
@@ -118,7 +118,7 @@
             <div v-for="(item,i) in usage.items" :key="i" class="wb-usage-row">
               <span class="u-time">{{(item.created_at||'').replace('T',' ').replace('Z','')}}</span>
               <span class="u-model">{{item.model}}</span>
-              <span class="u-cost">{{(item.cost_cny||0).toFixed(4)}}</span>
+               <span class="u-cost">{{serverPlatform==='tk' ? disp(item.cost_cny).toLocaleString() : disp(item.cost_cny).toFixed(2)}}</span>
               <span class="u-tok">{{item.prompt_tokens||0}}+{{item.completion_tokens||0}}</span>
             </div>
           </div>
@@ -319,8 +319,17 @@ const logoIcon = "/icons/32x32.png";
 
 const domainMap = { glm: "jf", tk: "tk" };
 const baseUrl = computed(() => "https://" + (domainMap[props.serverPlatform] || props.serverPlatform) + ".ainb7.com/v1");
-const remaining = computed(() => usage.value.quota > 0 ? usage.value.quota - (usage.value.used||0) : (usage.value.balance||0));
 const unit = computed(() => props.serverPlatform === 'tk' ? 'Token' : '积分');
+// TK站后端返回的是积分，1积分=15002 Token，显示时换算成Token整数；JF站直接显示积分
+const TOKEN_RATE = 15002;
+const disp = (v) => {
+  const n = Number(v) || 0;
+  return props.serverPlatform === 'tk' ? Math.round(n * TOKEN_RATE) : n;
+};
+const remaining = computed(() => {
+  const raw = usage.value.quota > 0 ? usage.value.quota - (usage.value.used||0) : (usage.value.balance||0);
+  return disp(raw);
+});
 
 const tabs = [
   { key:"overview", label:"概览", icon:"📊" },
@@ -360,7 +369,7 @@ async function doRecharge() {
     var r = await redeemCard(props.serverPlatform, rechargeCard.value.trim(), props.apiKey);
     if (r.ok) {
       const added = r.added !== undefined ? r.added : r.balance;
-      showToast("充值成功 +" + Number(added).toFixed(2) + " " + unit.value, "success");
+      showToast("充值成功 +" + (serverPlatform==='tk' ? disp(added).toLocaleString() : disp(added).toFixed(2)) + " " + unit.value, "success");
       rechargeCard.value = "";
       showRecharge.value = false;
       loadData();
