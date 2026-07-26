@@ -5,7 +5,7 @@
       <div class="wb-sidebar-header">
         <div class="wb-sidebar-logo">
           <span class="wb-logo-icon">⚡</span>
-          <span class="wb-logo-text">JF自动部署</span>
+          <span class="wb-logo-text">{{ appTitle }}</span>
         </div>
         <div class="wb-sidebar-version">v{{ appVersion }}</div>
       </div>
@@ -246,8 +246,11 @@ const models = ref([]);
 const showRecharge = ref(false);
 const showDiag = ref(false);
 const showGuide = ref(false);
-const appVersion = ref(12);
+const appVersion = ref(0);
 const isDark = ref(false);
+
+// 根据卡密所属站动态显示标题：JF站→JF自动部署工具，TK站→Token自动部署工具
+const appTitle = computed(() => props.serverPlatform === 'tk' ? 'Token自动部署工具' : 'JF自动部署工具');
 
 // 根据中国时间自动切换白天/夜晚（6:00-18:00白天，18:00-6:00夜晚）
 function updateThemeByTime() {
@@ -368,7 +371,16 @@ async function doRecharge() {
   finally { recharging.value = false; }
 }
 
-onMounted(loadData);
+onMounted(async () => {
+  // 读取真实软件版本号
+  if (window.__TAURI_INTERNALS__) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      appVersion.value = await invoke("get_app_version");
+    } catch(e) { appVersion.value = 0; }
+  }
+  loadData();
+});
 
 async function doClearDeploy() {
   const selected = Object.keys(clearPlatforms).filter(k => clearPlatforms[k]);
