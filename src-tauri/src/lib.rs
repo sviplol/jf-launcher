@@ -49,27 +49,11 @@ fn to_wb_vendor(model_id: &str) -> &str {
     }
 }
 
-/// 根据模型id返回显示名称(跟官方一致)
+/// 根据模型id返回显示名称: 【NB】+模型id（如【NB】kimi-k3）。
+/// WorkBuddy 下拉显示为 name:id →【NB】kimi-k3:kimi-k3（协调统一）；
+/// 消耗记录显示 name →【NB】kimi-k3（能区分具体模型）。
 fn to_wb_display_name(model_id: &str) -> String {
-    match model_id {
-        "auto" => "自动模式（智能选择）".to_string(),
-        "glm-5.2" => "GLM-5.2".to_string(),
-        "glm-5.1" => "GLM-5.1".to_string(),
-        "glm-5.0-turbo" => "GLM-5.0 Turbo".to_string(),
-        "glm-5v-turbo" => "GLM-5V Turbo".to_string(),
-        "deepseek-v3" => "DeepSeek V3".to_string(),
-        "deepseek-r1" => "DeepSeek R1".to_string(),
-        "deepseek-v3.2" => "DeepSeek V3.2".to_string(),
-        "deepseek-v4-flash" => "DeepSeek V4 Flash".to_string(),
-        "deepseek-v4-pro" => "DeepSeek V4 Pro".to_string(),
-        "kimi-k2.7" => "Kimi K2.7".to_string(),
-        "kimi-k2.6" => "Kimi K2.6".to_string(),
-        "minimax-m2.7" => "MiniMax M2.7".to_string(),
-        "minimax-m3" => "MiniMax M3".to_string(),
-        "hy3-preview" => "HY3 Preview".to_string(),
-        "kimi-k3" => "Kimi K3".to_string(),
-        _ => model_id.to_string(),
-    }
+    format!("【NB】{}", model_id)
 }
 
 /// 根据模型id返回官方descriptionEn (跟官方entry完全一致)
@@ -2590,7 +2574,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 2;
+const APP_VERSION: u32 = 6;
 
 /// 获取当前软件版本号
 #[tauri::command]
