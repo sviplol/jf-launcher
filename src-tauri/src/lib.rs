@@ -60,6 +60,7 @@ fn to_wb_display_name(model_id: &str) -> String {
 fn to_wb_description_en(model_id: &str) -> &'static str {
     match model_id {
         "auto" => "Balances quality and speed. Automatically selects the best model for each task, with a variable credit multiplier.",
+        "glm-5.3" => "Latest flagship, 1M context, built for long-horizon tasks.",
         "glm-5.2" => "1M context, built for long-horizon tasks.",
         "glm-5.1" => "Previous generation flagship model.",
         "glm-5.0-turbo" => "Fast response version.",
@@ -82,6 +83,7 @@ fn to_wb_description_en(model_id: &str) -> &'static str {
 /// 根据模型id返回官方credits字符串
 fn to_wb_credits(model_id: &str) -> &'static str {
     match model_id {
+        "glm-5.3" => "x0.79",
         "glm-5.2" => "x0.79",
         "glm-5.1" => "x0.79",
         "glm-5.0-turbo" => "x0.95",
@@ -105,7 +107,8 @@ fn to_wb_credits(model_id: &str) -> &'static str {
 fn to_wb_description_zh(model_id: &str) -> &'static str {
     match model_id {
         "auto" => "自动模式，根据任务难度智能分配模型，节省Token",
-        "glm-5.2" => "智谱最新旗舰，1M上下文，深度推理+视觉+工具调用",
+        "glm-5.3" => "智谱最新旗舰，1M上下文，深度推理+视觉+工具调用",
+        "glm-5.2" => "智谱上一代旗舰，1M上下文，深度推理+视觉+工具调用",
         "glm-5.1" => "智谱上一代旗舰模型",
         "glm-5.0-turbo" => "快速响应版，适合日常任务",
         "glm-5v-turbo" => "视觉模型，支持图片理解",
@@ -2574,7 +2577,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 6;
+const APP_VERSION: u32 = 7;
 
 /// 获取当前软件版本号
 #[tauri::command]
