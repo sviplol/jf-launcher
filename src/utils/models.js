@@ -4,22 +4,22 @@
  */
 
 export const ALL_MODELS = [
-  { id:"auto", name:"【NB】auto", desc:"自动模式，根据任务难度智能分配模型，节省Token", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:128000, defaultReasoning:"high", recommended:true, isAuto:true },
-  { id:"hy3-preview", name:"【NB】hy3-preview", desc:"HY3 预览版", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:false, maxInputTokens:128000, maxOutputTokens:8192, defaultReasoning:"medium" },
-  { id:"glm-5.3", name:"【NB】glm-5.3", desc:"智谱最新旗舰，推理+视觉+工具调用", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:128000, defaultReasoning:"high", recommended:true },
-  { id:"glm-5.2", name:"【NB】glm-5.2", desc:"智谱上一代旗舰，推理+视觉+工具调用", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:128000, defaultReasoning:"high", recommended:true },
-  { id:"glm-5.1", name:"【NB】glm-5.1", desc:"智谱上一代旗舰", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:200000, maxOutputTokens:128000, defaultReasoning:"high" },
+  { id:"auto", name:"【NB】auto", desc:"自动模式，根据任务难度智能分配模型，节省Token", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:128000, defaultReasoning:"high", recommended:true, isAuto:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
+  { id:"hy3-preview", name:"【NB】hy3-preview", desc:"HY3 预览版", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:false, maxInputTokens:128000, maxOutputTokens:8192, defaultReasoning:"medium" , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
+  { id:"glm-5.3", name:"【NB】glm-5.3", desc:"智谱最新旗舰，推理+视觉+工具调用", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:128000, defaultReasoning:"high", recommended:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
+  { id:"glm-5.2", name:"【NB】glm-5.2", desc:"智谱上一代旗舰，推理+视觉+工具调用", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:128000, defaultReasoning:"high", recommended:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
+  { id:"glm-5.1", name:"【NB】glm-5.1", desc:"智谱上一代旗舰", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:200000, maxOutputTokens:128000, defaultReasoning:"high" , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
   { id:"glm-5v-turbo", name:"【NB】glm-5v-turbo", desc:"视觉模型，支持图片理解", type:"vision", supportsReasoning:false, supportsImages:true, supportsToolCall:false, maxInputTokens:128000, maxOutputTokens:8192, defaultReasoning:"none" },
   { id:"minimax-m3", name:"【NB】minimax-m3", desc:"MiniMax 最新版", type:"chat", supportsReasoning:false, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:512000, defaultReasoning:"none" },
-  { id:"kimi-k3", name:"【NB】kimi-k3", desc:"月之暗面 Kimi 最新旗舰", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:128000, defaultReasoning:"high", recommended:true },
-  { id:"kimi-k2.7", name:"【NB】kimi-k2.7", desc:"月之暗面 Kimi 最新版", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:256000, maxOutputTokens:128000, defaultReasoning:"high" },
-  { id:"kimi-k2.6", name:"【NB】kimi-k2.6", desc:"Kimi 上一版本", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:256000, maxOutputTokens:128000, defaultReasoning:"medium" },
+  { id:"kimi-k3", name:"【NB】kimi-k3", desc:"月之暗面 Kimi 最新旗舰", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:128000, defaultReasoning:"high", recommended:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
+  { id:"kimi-k2.7", name:"【NB】kimi-k2.7", desc:"月之暗面 Kimi 最新版", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:256000, maxOutputTokens:128000, defaultReasoning:"high" , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
+  { id:"kimi-k2.6", name:"【NB】kimi-k2.6", desc:"Kimi 上一版本", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:256000, maxOutputTokens:128000, defaultReasoning:"medium" , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
   { id:"glm-5.0-turbo", name:"【NB】glm-5.0-turbo", desc:"快速响应版", type:"chat", supportsReasoning:false, supportsImages:true, supportsToolCall:true, maxInputTokens:128000, maxOutputTokens:8192, defaultReasoning:"none" },
   { id:"deepseek-v3", name:"【NB】deepseek-v3", desc:"DeepSeek 通用对话", type:"chat", supportsReasoning:false, supportsImages:true, supportsToolCall:true, maxInputTokens:128000, maxOutputTokens:8192, defaultReasoning:"none" },
-  { id:"deepseek-r1", name:"【NB】deepseek-r1", desc:"DeepSeek 推理模型，深度思考", type:"reasoning", supportsReasoning:true, supportsImages:true, supportsToolCall:false, maxInputTokens:128000, maxOutputTokens:8192, defaultReasoning:"max", recommended:true },
+  { id:"deepseek-r1", name:"【NB】deepseek-r1", desc:"DeepSeek 推理模型，深度思考", type:"reasoning", supportsReasoning:true, supportsImages:true, supportsToolCall:false, maxInputTokens:128000, maxOutputTokens:8192, defaultReasoning:"max", recommended:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
   { id:"deepseek-v3.2", name:"【NB】deepseek-v3.2", desc:"DeepSeek V3 升级版", type:"chat", supportsReasoning:false, supportsImages:true, supportsToolCall:true, maxInputTokens:128000, maxOutputTokens:8192, defaultReasoning:"none" },
   { id:"deepseek-v4-flash", name:"【NB】deepseek-v4-flash", desc:"快速版，低延迟", type:"chat", supportsReasoning:false, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:384000, defaultReasoning:"none" },
-  { id:"deepseek-v4-pro", name:"【NB】deepseek-v4-pro", desc:"DeepSeek 专业版", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:384000, defaultReasoning:"medium" },
+  { id:"deepseek-v4-pro", name:"【NB】deepseek-v4-pro", desc:"DeepSeek 专业版", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:384000, defaultReasoning:"medium" , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
   { id:"minimax-m2.7", name:"【NB】minimax-m2.7", desc:"MiniMax 对话模型", type:"chat", supportsReasoning:false, supportsImages:true, supportsToolCall:false, maxInputTokens:200000, maxOutputTokens:128000, defaultReasoning:"none" },
 ];
 
@@ -61,6 +61,9 @@ export function buildModelConfig(model, reasoningLevels, deepThinking) {
     maxInputTokens: model.maxInputTokens,
     maxOutputTokens: model.maxOutputTokens,
     deepThinking: deepThinking && model.supportsReasoning,
+    supportedEfforts: model.supportsReasoning ? (model.supportedEfforts || ["low","medium","high","xhigh","max"]) : undefined,
+    defaultEffort: model.supportsReasoning ? (model.defaultEffort || "medium") : undefined,
+    canDisableThinking: model.supportsReasoning ? true : undefined,
   };
   Object.keys(base).forEach(k => base[k] === undefined && delete base[k]);
   return base;

@@ -89,6 +89,8 @@
         </div>
         <label class="wb-deep-toggle">
           <input type="checkbox" v-model="deepThinking" /> 深度思考
+          <span v-if="!deepThinking" style="color:#86909c;font-size:12px">（开启燃烧token进入深度思考，积分费的快，建议关闭）</span>
+          <span v-else style="color:#ff4d4f;font-size:12px">⚠️ 开启燃烧token进入深度思考，积分费的快</span>
         </label>
         <div class="wb-rate-notice">
           💡 百分百1比1倍率抵扣同步 — 各推理等级积分消耗按上游实际倍率1:1同步抵扣，无任何额外加价
@@ -195,8 +197,8 @@ const installed = ref({});
 const selectedPlatforms = ref([]);
 const selectedModels = ref(ALL_MODELS.map(m => m.id));
 const defaultModel = ref("auto");
-const reasoningLevel = ref("max");
-const deepThinking = ref(true);
+const reasoningLevel = ref("medium");
+const deepThinking = ref(false);
 const deploying = ref(false);
 const deployResults = ref([]);
 const showVideo = ref(false);
