@@ -298,6 +298,9 @@ const guideVideos = [
 ];
 
 const CHANGELOG = {
+  11: [
+    "客户端模型卡片不再显示倍率",
+  ],
   10: [
     "新增 GLM-5.3-Flash 模型（智谱快速版，低延迟高性价比）",
   ],

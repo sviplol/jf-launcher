@@ -98,7 +98,8 @@ fn to_wb_description_en(model_id: &str) -> &'static str {
     }
 }
 
-/// 根据模型id返回官方credits字符串
+/// 根据模型id返回官方credits字符串（当前不在客户端显示倍率, 备用）
+#[allow(dead_code)]
 fn to_wb_credits(model_id: &str) -> &'static str {
     match model_id {
         "glm-5.3" => "x0.79",
@@ -605,7 +606,6 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
             "maxOutputTokens": mc.and_then(|c| c.get("maxOutputTokens")).and_then(|v| v.as_u64()).unwrap_or(128000),
             "descriptionEn": to_wb_description_en(mid),
             "descriptionZh": to_wb_description_zh(mid),
-            "credits": to_wb_credits(mid),
             "deepThinking": true
         })
     }).collect();
@@ -710,8 +710,7 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
             "tags": ["custom"],
             "temperature": 1,
             "descriptionEn": to_wb_description_en(mid),
-            "descriptionZh": to_wb_description_zh(mid),
-            "credits": to_wb_credits(mid)
+            "descriptionZh": to_wb_description_zh(mid)
         })
     }).collect();
     // models.json 必须是对象格式 {"models": [...]}, 不能是数组 (WorkBuddy Provider只认对象)
@@ -767,7 +766,6 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
         let vendor = to_wb_vendor(mid);
         let desc_en = to_wb_description_en(mid);
         let desc_zh = to_wb_description_zh(mid);
-        let credits = to_wb_credits(mid);
         serde_json::json!({
             "id": format!("custom-local:{}", mid),
             "name": display_name,
@@ -796,8 +794,7 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
             "tags": ["craft"],
             "temperature": 1,
             "descriptionEn": desc_en,
-            "descriptionZh": desc_zh,
-            "credits": credits
+            "descriptionZh": desc_zh
         })
     }).collect();
 
@@ -2604,7 +2601,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 10;
+const APP_VERSION: u32 = 11;
 
 /// 获取当前软件版本号
 #[tauri::command]
