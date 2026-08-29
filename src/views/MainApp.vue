@@ -365,19 +365,47 @@ async function loadData() {
 async function doRecharge() {
   if (!rechargeCard.value.trim()) { showToast("请输入卡号", "error"); return; }
   recharging.value = true;
+  // 记录充值前余额(失败时二次核实是否实际到账)
+  let before = usage.value.quota > 0 ? (usage.value.quota - (usage.value.used||0)) : (usage.value.balance||0);
   try {
     var r = await redeemCard(props.serverPlatform, rechargeCard.value.trim(), props.apiKey);
     if (r.ok) {
       const added = r.added !== undefined ? r.added : r.balance;
-      showToast("充值成功 +" + (serverPlatform==='tk' ? disp(added).toLocaleString() : disp(added).toFixed(2)) + " " + unit.value, "success");
+      showToast("充值成功 +" + (props.serverPlatform==='tk' ? disp(added).toLocaleString() : disp(added).toFixed(2)) + " " + unit.value, "success");
       rechargeCard.value = "";
       showRecharge.value = false;
       loadData();
     } else {
+      // 返回失败 → 二次核实余额(后端可能已实际处理, 只是响应异常)
+      const verified = await verifyRecharge(before);
+      if (verified) return;
       showToast(r.msg || "充值失败", "error");
     }
-  } catch(e) { showToast("网络错误: " + e.message, "error"); }
-  finally { recharging.value = false; }
+  } catch(e) {
+    // 网络/超时 → 后端事务可能已提交, 二次核实余额
+    const verified = await verifyRecharge(before);
+    if (verified) return;
+    showToast("网络错误: " + e.message, "error");
+  } finally { recharging.value = false; }
+}
+
+// 充值报错后二次核实: 重新查余额, 若比充值前多 = 实际已到账
+async function verifyRecharge(before) {
+  try {
+    const d = await lookup(props.serverPlatform, props.apiKey);
+    if (d.ok) {
+      usage.value = d; balance.value = d.balance;
+      const now = d.quota > 0 ? (d.quota - (d.used||0)) : (d.balance||0);
+      if (Number(now) > Number(before)) {
+        const added = Number(now) - Number(before);
+        showToast("充值实际已到账 +" + (props.serverPlatform==='tk' ? disp(added).toLocaleString() : disp(added).toFixed(2)) + " " + unit.value + "（网络延迟误报，已核实）", "success");
+        rechargeCard.value = "";
+        showRecharge.value = false;
+        return true;
+      }
+    }
+  } catch(e) {}
+  return false;
 }
 
 onMounted(async () => {

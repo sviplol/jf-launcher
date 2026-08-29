@@ -62,10 +62,11 @@ export async function register(platform, username, password) {
 }
 
 export async function redeemCard(platform, card, existingKey) {
+  // 充值是后端写事务(可能遇SQLite写锁排队), 超时放宽到60秒, 避免实际到账但前端报错
   return fetchJson(BASE(platform) + "/api/card/redeem", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ card, key: existingKey || "" }),
-  });
+  }, 60000);
 }
 
 export async function lookup(platform, apiKey) {
