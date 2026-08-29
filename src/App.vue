@@ -298,6 +298,9 @@ const guideVideos = [
 ];
 
 const CHANGELOG = {
+  12: [
+    "修复新版 WorkBuddy 部署后鉴权失败：现在同时写入 entry 和 wb_entry 两套配置文件",
+  ],
   11: [
     "客户端模型卡片不再显示倍率",
   ],

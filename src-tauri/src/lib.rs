@@ -925,18 +925,25 @@ fn kill_workbuddy_processes() {
     std::thread::sleep(std::time::Duration::from_millis(3000));
 }
 
-/// 在 local_storage 目录中找到所有 entry_*.info 文件
+/// 在 local_storage 目录中找到所有 entry_*.info / wb_entry_*.info 文件
 /// 返回 (文件名, 解码后的JSON字符串, 格式类型)
 /// 支持三种格式:
-///   1. gzip+base64+引号 (旧版5.2.x)
+///   1. gzip+base64+引号 (旧版5.2.x, wb_entry_*也是此格式)
 ///   2. 裸JSON数组 (新版5.2.5+)
 ///   3. 裸JSON对象
+/// 注意: 新版 WorkBuddy 同时使用 entry_* 和 wb_entry_* 两套文件, 必须全部处理,
+///       否则 wb_entry_* 里残留旧 apiKey 会导致客户端"鉴权失败"
 fn find_all_workbuddy_entries(ls_dir: &Path) -> Vec<(String, String, &'static str)> {
     let mut result = Vec::new();
     for entry in fs::read_dir(ls_dir).map_err(|e| format!("读取 local_storage 失败: {}", e)).into_iter().flatten() {
         if let Ok(entry) = entry {
             let name = entry.file_name().to_string_lossy().to_string();
-            if !name.starts_with("entry_") || !name.ends_with(".info") {
+            if !name.ends_with(".info") {
+                continue;
+            }
+            // 匹配 entry_*.info 和 wb_entry_*.info (排除备份后缀文件)
+            let is_entry = name.starts_with("entry_") || name.starts_with("wb_entry_");
+            if !is_entry {
                 continue;
             }
             if let Ok(raw) = fs::read(entry.path()) {
@@ -2601,7 +2608,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 11;
+const APP_VERSION: u32 = 12;
 
 /// 获取当前软件版本号
 #[tauri::command]
