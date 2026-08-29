@@ -298,6 +298,9 @@ const guideVideos = [
 ];
 
 const CHANGELOG = {
+  14: [
+    "模型名统一为 NB（完全复制 SP 方案），WorkBuddy 显示 NB:glm-5.2、NB:auto",
+  ],
   13: [
     "模型名优化：WorkBuddy 显示【NB】:模型ID，型号不重复（对齐同行 SP 方案）",
   ],
