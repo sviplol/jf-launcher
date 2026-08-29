@@ -66,11 +66,12 @@ fn to_wb_vendor(model_id: &str) -> &str {
     }
 }
 
-/// 根据模型id返回显示名称: 【NB】+模型id（如【NB】kimi-k3）。
-/// WorkBuddy 下拉显示为 name:id →【NB】kimi-k3:kimi-k3（协调统一）；
-/// 消耗记录显示 name →【NB】kimi-k3（能区分具体模型）。
+/// 根据模型id返回显示名称: 统一纯品牌词【NB】(同 SP 方案)。
+/// WorkBuddy 下拉显示为 name:id →【NB】:kimi-k3（型号只出现一次，不重复）；
+/// 消耗记录显示 name →【NB】(选模型时以 id 区分)。
 fn to_wb_display_name(model_id: &str) -> String {
-    format!("【NB】{}", model_id)
+    let _ = model_id;
+    "【NB】".to_string()
 }
 
 /// 根据模型id返回官方descriptionEn (跟官方entry完全一致)
@@ -2608,7 +2609,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 12;
+const APP_VERSION: u32 = 13;
 
 /// 获取当前软件版本号
 #[tauri::command]

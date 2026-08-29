@@ -298,6 +298,9 @@ const guideVideos = [
 ];
 
 const CHANGELOG = {
+  13: [
+    "模型名优化：WorkBuddy 显示【NB】:模型ID，型号不重复（对齐同行 SP 方案）",
+  ],
   12: [
     "修复新版 WorkBuddy 部署后鉴权失败：现在同时写入 entry 和 wb_entry 两套配置文件",
   ],
