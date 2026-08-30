@@ -59,7 +59,7 @@ fn to_wb_vendor(model_id: &str) -> &str {
         "f"
     } else if model_id.starts_with("deepseek-") || model_id.starts_with("kimi-") || model_id.starts_with("minimax-") {
         "f"
-    } else if model_id.starts_with("hy3") || model_id.starts_with("hunyuan") {
+    } else if model_id.starts_with("hy3") || model_id.starts_with("hy4") || model_id.starts_with("hunyuan") {
         "j"
     } else {
         "f"
@@ -93,6 +93,7 @@ fn to_wb_description_en(model_id: &str) -> &'static str {
         "minimax-m2.7" => "MiniMax chat model.",
         "minimax-m3" => "MiniMax latest version.",
         "hy3-preview" => "HY3 preview version.",
+        "hy4" => "Tencent Hunyuan HY4, deep reasoning.",
         "kimi-k3" => "Kimi K3 flagship model with enhanced reasoning.",
         _ => "",
     }
@@ -118,6 +119,7 @@ fn to_wb_credits(model_id: &str) -> &'static str {
         "minimax-m2.7" => "x0.26",
         "minimax-m3" => "x0.25",
         "hy3-preview" => "x0.00",
+        "hy4" => "x0.00",
         "kimi-k3" => "x1.62",
         _ => "",
     }
@@ -143,6 +145,7 @@ fn to_wb_description_zh(model_id: &str) -> &'static str {
         "minimax-m2.7" => "MiniMax 对话模型",
         "minimax-m3" => "MiniMax 最新版",
         "hy3-preview" => "腾讯混元HY3预览版，深度推理",
+        "hy4" => "腾讯混元HY4，深度推理",
         "kimi-k3" => "月之暗面Kimi K3最新旗舰，增强推理",
         _ => "",
     }
@@ -2608,7 +2611,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 14;
+const APP_VERSION: u32 = 15;
 
 /// 获取当前软件版本号
 #[tauri::command]

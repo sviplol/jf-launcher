@@ -298,6 +298,9 @@ const guideVideos = [
 ];
 
 const CHANGELOG = {
+  15: [
+    "新增 HY4 模型（腾讯混元，深度推理）",
+  ],
   14: [
     "模型名统一为 NB（完全复制 SP 方案），WorkBuddy 显示 NB:glm-5.2、NB:auto",
   ],
