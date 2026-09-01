@@ -622,6 +622,7 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
             },
             "maxInputTokens": mc.and_then(|c| c.get("maxInputTokens")).and_then(|v| v.as_u64()).unwrap_or(1000000),
             "maxOutputTokens": mc.and_then(|c| c.get("maxOutputTokens")).and_then(|v| v.as_u64()).unwrap_or(128000),
+            "iconUrl": mc.and_then(|c| c.get("iconUrl")).and_then(|v| v.as_str()).unwrap_or(""),
             "descriptionEn": to_wb_description_en(mid),
             "descriptionZh": to_wb_description_zh(mid),
             "deepThinking": true
@@ -727,6 +728,7 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
             },
             "tags": ["custom"],
             "temperature": 1,
+            "iconUrl": mc.and_then(|c| c.get("iconUrl")).and_then(|v| v.as_str()).unwrap_or(""),
             "descriptionEn": to_wb_description_en(mid),
             "descriptionZh": to_wb_description_zh(mid)
         })
@@ -784,6 +786,7 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
         let vendor = to_wb_vendor(mid);
         let desc_en = to_wb_description_en(mid);
         let desc_zh = to_wb_description_zh(mid);
+        let icon_url = mc.and_then(|c| c.get("iconUrl")).and_then(|v| v.as_str()).unwrap_or("");
         serde_json::json!({
             "id": format!("custom-local:{}", mid),
             "name": display_name,
@@ -811,6 +814,7 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
             },
             "tags": ["craft"],
             "temperature": 1,
+            "iconUrl": icon_url,
             "descriptionEn": desc_en,
             "descriptionZh": desc_zh
         })
@@ -2626,7 +2630,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 18;
+const APP_VERSION: u32 = 19;
 
 /// 获取当前软件版本号
 #[tauri::command]

@@ -4,9 +4,9 @@
  */
 
 export const ALL_MODELS = [
-  { id:"fast-model", name:"【NB】快速", desc:"优先响应速度，适合简单任务与快速问答（默认档，最低消耗）", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:200000, maxOutputTokens:48000, defaultReasoning:"medium", recommended:true, isTier:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:false, credits:"x1.68", iconUrl:"https://download.codebuddy.cn/model-icon/wb-fast.svg" },
-  { id:"balanced-model", name:"【NB】均衡", desc:"兼顾速度与质量，适合大多数日常工作", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:200000, maxOutputTokens:48000, defaultReasoning:"medium", isTier:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:false, credits:"x5.2", iconUrl:"https://download.codebuddy.cn/model-icon/wb-balanced.svg" },
-  { id:"deep-model", name:"【NB】极致", desc:"优先深度与准确性，适合复杂分析和高要求任务", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:200000, maxOutputTokens:48000, defaultReasoning:"medium", isTier:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:false, credits:"x9.6", iconUrl:"https://download.codebuddy.cn/model-icon/wb-primary.svg" },
+  { id:"fast-model", name:"【NB】快速", desc:"优先响应速度，适合简单任务与快速问答（默认档，最低消耗）", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:200000, maxOutputTokens:48000, defaultReasoning:"medium", recommended:true, isTier:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:false, credits:"x1.68", tierIcon:"https://download.codebuddy.cn/model-icon/wb-fast.svg" },
+  { id:"balanced-model", name:"【NB】均衡", desc:"兼顾速度与质量，适合大多数日常工作", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:200000, maxOutputTokens:48000, defaultReasoning:"medium", isTier:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:false, credits:"x5.2", tierIcon:"https://download.codebuddy.cn/model-icon/wb-balanced.svg" },
+  { id:"deep-model", name:"【NB】极致", desc:"优先深度与准确性，适合复杂分析和高要求任务", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:200000, maxOutputTokens:48000, defaultReasoning:"medium", isTier:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:false, credits:"x9.6", tierIcon:"https://download.codebuddy.cn/model-icon/wb-primary.svg" },
   { id:"hy3-preview", name:"【NB】hy3-preview", desc:"HY3 预览版", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:false, maxInputTokens:192000, maxOutputTokens:128000, defaultReasoning:"medium" , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
   { id:"hy4-preview", name:"【NB】hy4-preview", desc:"腾讯混元HY4，深度推理", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:false, maxInputTokens:128000, maxOutputTokens:8192, defaultReasoning:"high" , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
   { id:"glm-5.3", name:"【NB】glm-5.3", desc:"智谱最新旗舰，推理+视觉+工具调用", type:"chat", supportsReasoning:true, supportsImages:true, supportsToolCall:true, maxInputTokens:1000000, maxOutputTokens:131072, defaultReasoning:"high", recommended:true , supportedEfforts:["low","medium","high","xhigh","max"], defaultEffort:"medium", canDisableThinking:true },
@@ -50,7 +50,7 @@ export function buildModelConfig(model, reasoningLevels, deepThinking) {
       temperature: 1,
       desc: model.desc,
       credits: model.credits,
-      iconUrl: model.iconUrl,
+      iconUrl: model.tierIcon || "",
     };
   }
 
