@@ -55,7 +55,7 @@ fn to_anthropic_effort(level: &str) -> &str {
 fn to_wb_vendor(model_id: &str) -> &str {
     if model_id.starts_with("glm-") || model_id.starts_with("glm5") {
         "e"
-    } else if model_id == "auto" {
+    } else if model_id == "fast-model" || model_id == "balanced-model" || model_id == "deep-model" || model_id == "auto" {
         "f"
     } else if model_id.starts_with("deepseek-") || model_id.starts_with("kimi-") || model_id.starts_with("minimax-") {
         "f"
@@ -69,13 +69,20 @@ fn to_wb_vendor(model_id: &str) -> &str {
 /// 根据模型id返回显示名称: 统一纯品牌词 NB（同 SP 方案）。
 /// WorkBuddy 下拉显示为 name:id → NB:glm-5.2、NB:auto（型号只出现一次，不重复）。
 fn to_wb_display_name(model_id: &str) -> String {
-    let _ = model_id;
-    "NB".to_string()
+    match model_id {
+        "fast-model" => "【NB】快速".to_string(),
+        "balanced-model" => "【NB】均衡".to_string(),
+        "deep-model" => "【NB】极致".to_string(),
+        _ => "NB".to_string(),
+    }
 }
 
 /// 根据模型id返回官方descriptionEn (跟官方entry完全一致)
 fn to_wb_description_en(model_id: &str) -> &'static str {
     match model_id {
+        "fast-model" => "Prioritizes speed for simple tasks and quick answers",
+        "balanced-model" => "Balances speed and quality for most everyday tasks",
+        "deep-model" => "Prioritizes depth and accuracy for complex analysis and high-stakes tasks",
         "auto" => "Balances quality and speed. Automatically selects the best model for each task, with a variable credit multiplier.",
         "glm-5.3" => "Latest flagship, 1M context, built for long-horizon tasks.",
         "glm-5.3-flash" => "Fast version, low latency, cost-effective.",
@@ -95,6 +102,7 @@ fn to_wb_description_en(model_id: &str) -> &'static str {
         "hy3-preview" => "HY3 preview version.",
         "hy4-preview" => "Tencent Hunyuan HY4, deep reasoning.",
         "kimi-k3" => "Kimi K3 flagship model with enhanced reasoning.",
+        "kimi-k3-1" => "Kimi K3 official latest version.",
         _ => "",
     }
 }
@@ -103,6 +111,9 @@ fn to_wb_description_en(model_id: &str) -> &'static str {
 #[allow(dead_code)]
 fn to_wb_credits(model_id: &str) -> &'static str {
     match model_id {
+        "fast-model" => "x1.68",
+        "balanced-model" => "x5.2",
+        "deep-model" => "x9.6",
         "glm-5.3" => "x0.79",
         "glm-5.3-flash" => "x0.29",
         "glm-5.2" => "x0.79",
@@ -128,6 +139,9 @@ fn to_wb_credits(model_id: &str) -> &'static str {
 /// 根据模型id返回中文描述 (用于WorkBuddy问号图标点击显示)
 fn to_wb_description_zh(model_id: &str) -> &'static str {
     match model_id {
+        "fast-model" => "优先响应速度，适合简单任务与快速问答",
+        "balanced-model" => "兼顾速度与质量，适合大多数日常工作",
+        "deep-model" => "优先深度与准确性，适合复杂分析和高要求任务",
         "auto" => "自动模式，根据任务难度智能分配模型，节省Token",
         "glm-5.3" => "智谱最新旗舰，1M上下文，深度推理+视觉+工具调用",
         "glm-5.3-flash" => "智谱快速版，低延迟高性价比",
@@ -147,6 +161,7 @@ fn to_wb_description_zh(model_id: &str) -> &'static str {
         "hy3-preview" => "腾讯混元HY3预览版，深度推理",
         "hy4-preview" => "腾讯混元HY4，深度推理",
         "kimi-k3" => "月之暗面Kimi K3最新旗舰，增强推理",
+        "kimi-k3-1" => "月之暗面Kimi K3-1官方最新版",
         _ => "",
     }
 }
@@ -2611,7 +2626,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 17;
+const APP_VERSION: u32 = 18;
 
 /// 获取当前软件版本号
 #[tauri::command]
