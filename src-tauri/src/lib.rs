@@ -595,41 +595,54 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
         format!("{}/v1", config.base_url.trim_end_matches('/'))
     };
 
-    // 所有模型统一格式 — 跟 CodeBuddy 实际能用的配置完全一致
-    // 第一个模型设 isDefault=true，让客户端启动后自动选中 GLM-5.2
+    // v21.1 统一模板: 与 WorkBuddy 相同格式; 仅第一个模型 isDefault=true
     let new_models: Vec<serde_json::Value> = config.selected_model_ids.iter().enumerate().map(|(i, mid)| {
         let mc = config.model_configs.iter().find(|m| {
             m.get("id").and_then(|v| v.as_str()) == Some(mid.as_str())
         });
-
-        serde_json::json!({
+        let is_tier = mid == "fast-model" || mid == "balanced-model" || mid == "deep-model";
+        let tier_name: Option<&str> = match mid.as_str() {
+            "fast-model" => Some("快速"),
+            "balanced-model" => Some("均衡"),
+            "deep-model" => Some("极致"),
+            _ => None,
+        };
+        let mut entry = serde_json::json!({
             "id": mid,
-            "name": to_wb_display_name(mid),
-            "vendor": "user",
-            "url": cb_url,
+            "name": tier_name.unwrap_or("NB"),
+            "vendor": "NB",
             "apiKey": config.api_key,
+            "url": cb_url,
+            "maxInputTokens": 360000,
+            "maxOutputTokens": 8192,
             "supportsToolCall": true,
             "supportsImages": true,
             "supportsReasoning": true,
-            "onlyReasoning": true,
+            "maxAllowedSize": 360000,
             "isDefault": i == 0,
+            "contextWindow": {
+                "defaultLength": 200000,
+                "supportedLengths": if is_tier { serde_json::json!([100000, 200000]) } else { serde_json::json!([128000, 200000]) }
+            },
             "reasoning": {
-                "effort": to_wb_effort(&config.reasoning_level),
-                "summary": "auto",
                 "canDisableThinking": true,
                 "defaultEffort": "medium",
+                "effort": "medium",
+                "summary": "auto",
                 "supportedEfforts": ["low", "medium", "high", "xhigh", "max"]
-            },
-            "maxInputTokens": mc.and_then(|c| c.get("maxInputTokens")).and_then(|v| v.as_u64()).unwrap_or(1000000),
-            "maxOutputTokens": mc.and_then(|c| c.get("maxOutputTokens")).and_then(|v| v.as_u64()).unwrap_or(128000),
-            "iconUrl": mc.and_then(|c| c.get("iconUrl")).and_then(|v| v.as_str()).unwrap_or(""),
-            "descriptionEn": to_wb_description_en(mid),
-            "descriptionZh": to_wb_description_zh(mid),
-            "deepThinking": true
-        })
+            }
+        });
+        if is_tier {
+            if let Some(obj) = entry.as_object_mut() {
+                obj.insert("iconUrl".to_string(), serde_json::json!(
+                    mc.and_then(|c| c.get("iconUrl")).and_then(|v| v.as_str()).unwrap_or("")
+                ));
+            }
+        }
+        entry
     }).collect();
 
-    // 读取现有 models.json, 保留官方模型, 只替换 vendor=user 的模型
+    // 读取现有 models.json, 保留官方模型, 只替换我们的模型(兼容旧vendor=user和新vendor=NB)
     let existing: serde_json::Value = if models_path.exists() {
         read_json_file(&models_path)
             .unwrap_or(serde_json::json!({"models": []}))
@@ -641,12 +654,12 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
         let _ = fs::copy(&models_path, &backup_path);
     }
 
-    // 分离官方模型和旧的自定义模型
+    // 分离官方模型和旧的自定义模型(两种vendor都算我们的)
     let mut official_models: Vec<serde_json::Value> = Vec::new();
     if let Some(models) = existing.get("models").and_then(|m| m.as_array()) {
         for m in models {
             let vendor = m.get("vendor").and_then(|v| v.as_str()).unwrap_or("");
-            if vendor != "user" {
+            if vendor != "user" && vendor != "NB" {
                 official_models.push(m.clone());
             }
         }
@@ -660,7 +673,7 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
     fs::write(&models_path, serde_json::to_string_pretty(&out).unwrap())
         .map_err(|e| format!("写入失败: {}", e))?;
 
-    // 写入全局配置: settings.json (全局 reasoningEffort=xhigh + alwaysThinkingEnabled=true)
+    // 写入全局配置: settings.json (v21.1: medium/false 思考强度可选)
     let cb_settings_path = cb_dir.join("settings.json");
     let mut cb_settings: serde_json::Value = if cb_settings_path.exists() {
         read_json_file(&cb_settings_path)
@@ -669,12 +682,12 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
         serde_json::json!({})
     };
     if let Some(obj) = cb_settings.as_object_mut() {
-        obj.insert("reasoningEffort".to_string(), serde_json::json!(to_wb_effort(&config.reasoning_level)));
-        obj.insert("alwaysThinkingEnabled".to_string(), serde_json::json!(config.deep_thinking));
+        obj.insert("reasoningEffort".to_string(), serde_json::json!("medium"));
+        obj.insert("alwaysThinkingEnabled".to_string(), serde_json::json!(false));
     }
     let _ = fs::write(&cb_settings_path, serde_json::to_string_pretty(&cb_settings).unwrap_or_default());
 
-    Ok(format!("CodeBuddy CN: {} 个模型已写入 ~/.codebuddy/models.json + 全局配置 reasoningEffort=xhigh", config.selected_model_ids.len()))
+    Ok(format!("CodeBuddy CN: {} 个模型已写入 ~/.codebuddy/models.json + 全局配置 reasoningEffort=medium", config.selected_model_ids.len()))
 }
 
 /// WorkBuddy 部署: 写入 ~/.workbuddy/models.json
@@ -700,38 +713,52 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
     } else {
         format!("{}/v1", config.base_url.trim_end_matches('/'))
     };
+    // v21.1 统一模板: 所有模型同一格式, 思考强度可选的关键
+    // 三档 name=快速/均衡/极致(纯中文), 其他=NB; vendor=NB品牌标识; iconUrl仅三档有
     let models_json_entries: Vec<serde_json::Value> = config.selected_model_ids.iter().map(|mid| {
         let mc = config.model_configs.iter().find(|m| {
             m.get("id").and_then(|v| v.as_str()) == Some(mid.as_str())
         });
-        let supports_reasoning = mc.and_then(|c| c.get("supportsReasoning")).and_then(|v| v.as_bool()).unwrap_or(true);
-        let supports_tools = mc.and_then(|c| c.get("supportsToolCall")).and_then(|v| v.as_bool()).unwrap_or(true);
-        serde_json::json!({
+        let is_tier = mid == "fast-model" || mid == "balanced-model" || mid == "deep-model";
+        let tier_name: Option<&str> = match mid.as_str() {
+            "fast-model" => Some("快速"),
+            "balanced-model" => Some("均衡"),
+            "deep-model" => Some("极致"),
+            _ => None,
+        };
+        let mut entry = serde_json::json!({
             "id": mid,
-            "name": to_wb_display_name(mid),
-            "vendor": "user",
-            "url": wb_url,
+            "name": tier_name.unwrap_or("NB"),
+            "vendor": "NB",
             "apiKey": config.api_key,
-            "supportsToolCall": supports_tools,
+            "url": wb_url,
+            "maxInputTokens": 360000,
+            "maxOutputTokens": 8192,
+            "supportsToolCall": true,
             "supportsImages": true,
-            "supportsReasoning": supports_reasoning,
+            "supportsReasoning": true,
+            "maxAllowedSize": 360000,
+            "contextWindow": {
+                "defaultLength": 200000,
+                "supportedLengths": if is_tier { serde_json::json!([100000, 200000]) } else { serde_json::json!([128000, 200000]) }
+            },
             "reasoning": {
-                "effort": to_wb_effort(&config.reasoning_level),
-                "summary": "auto",
                 "canDisableThinking": true,
                 "defaultEffort": "medium",
+                "effort": "medium",
+                "summary": "auto",
                 "supportedEfforts": ["low", "medium", "high", "xhigh", "max"]
-            },
-            "relatedModels": {
-                "lite": mid,
-                "reasoning": mid
-            },
-            "tags": ["custom"],
-            "temperature": 1,
-            "iconUrl": mc.and_then(|c| c.get("iconUrl")).and_then(|v| v.as_str()).unwrap_or(""),
-            "descriptionEn": to_wb_description_en(mid),
-            "descriptionZh": to_wb_description_zh(mid)
-        })
+            }
+        });
+        // iconUrl 仅三档有(官方URL), 其他模型不写
+        if is_tier {
+            if let Some(obj) = entry.as_object_mut() {
+                obj.insert("iconUrl".to_string(), serde_json::json!(
+                    mc.and_then(|c| c.get("iconUrl")).and_then(|v| v.as_str()).unwrap_or("")
+                ));
+            }
+        }
+        entry
     }).collect();
     // models.json 必须是对象格式 {"models": [...]}, 不能是数组 (WorkBuddy Provider只认对象)
     let models_json_obj = serde_json::json!({"models": models_json_entries});
@@ -773,51 +800,50 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
             .map_err(|e| format!("创建 entry 文件失败: {}", e))?;
     }
 
-    // 构建要注入的 custom-local 模型列表 (跟官方模型格式完全一致以获得图标)
-    let new_models: Vec<serde_json::Value> = config.selected_model_ids.iter().enumerate().map(|(i, mid)| {
+    // 构建要注入的 custom-local 模型列表 (v21.1 统一模板, 与 models.json 同格式)
+    let new_models: Vec<serde_json::Value> = config.selected_model_ids.iter().map(|mid| {
         let mc = config.model_configs.iter().find(|m| {
             m.get("id").and_then(|v| v.as_str()) == Some(mid.as_str())
         });
-        let supports_reasoning = mc.and_then(|c| c.get("supportsReasoning")).and_then(|v| v.as_bool()).unwrap_or(true);
-        let supports_tools = mc.and_then(|c| c.get("supportsToolCall")).and_then(|v| v.as_bool()).unwrap_or(true);
-        let max_input = mc.and_then(|c| c.get("maxInputTokens")).and_then(|v| v.as_u64()).unwrap_or(1000000);
-        let max_output = mc.and_then(|c| c.get("maxOutputTokens")).and_then(|v| v.as_u64()).unwrap_or(128000);
-        let display_name = to_wb_display_name(mid);
-        let vendor = to_wb_vendor(mid);
-        let desc_en = to_wb_description_en(mid);
-        let desc_zh = to_wb_description_zh(mid);
-        let icon_url = mc.and_then(|c| c.get("iconUrl")).and_then(|v| v.as_str()).unwrap_or("");
-        serde_json::json!({
+        let is_tier = mid == "fast-model" || mid == "balanced-model" || mid == "deep-model";
+        let tier_name: Option<&str> = match mid.as_str() {
+            "fast-model" => Some("快速"),
+            "balanced-model" => Some("均衡"),
+            "deep-model" => Some("极致"),
+            _ => None,
+        };
+        let mut entry = serde_json::json!({
             "id": format!("custom-local:{}", mid),
-            "name": display_name,
-            "vendor": vendor,
+            "name": tier_name.unwrap_or("NB"),
+            "vendor": "NB",
             "url": wb_url,
             "apiKey": config.api_key,
-            "supportsToolCall": supports_tools,
+            "maxInputTokens": 360000,
+            "maxOutputTokens": 8192,
+            "supportsToolCall": true,
             "supportsImages": true,
-            "supportsReasoning": supports_reasoning,
-            "onlyReasoning": supports_reasoning,
-            "isDefault": i == 0,
-            "maxInputTokens": max_input,
-            "maxOutputTokens": max_output,
-            "maxAllowedSize": max_input,
+            "supportsReasoning": true,
+            "maxAllowedSize": 360000,
+            "contextWindow": {
+                "defaultLength": 200000,
+                "supportedLengths": if is_tier { serde_json::json!([100000, 200000]) } else { serde_json::json!([128000, 200000]) }
+            },
             "reasoning": {
-                "effort": to_wb_effort(&config.reasoning_level),
-                "summary": "auto",
                 "canDisableThinking": true,
                 "defaultEffort": "medium",
+                "effort": "medium",
+                "summary": "auto",
                 "supportedEfforts": ["low", "medium", "high", "xhigh", "max"]
-            },
-            "relatedModels": {
-                "lite": mid,
-                "reasoning": mid
-            },
-            "tags": ["craft"],
-            "temperature": 1,
-            "iconUrl": icon_url,
-            "descriptionEn": desc_en,
-            "descriptionZh": desc_zh
-        })
+            }
+        });
+        if is_tier {
+            if let Some(obj) = entry.as_object_mut() {
+                obj.insert("iconUrl".to_string(), serde_json::json!(
+                    mc.and_then(|c| c.get("iconUrl")).and_then(|v| v.as_str()).unwrap_or("")
+                ));
+            }
+        }
+        entry
     }).collect();
 
     // 处理所有 entry_*.info 文件 (支持多种格式)
@@ -892,8 +918,9 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
     } else {
         serde_json::json!({})
     };
-    let wb_effort = to_wb_effort(&config.reasoning_level);
-    let wb_always_thinking = config.deep_thinking;
+    // v21.1: 固定 medium/false — alwaysThinkingEnabled=false 是思考强度可选的关键开关
+    let wb_effort = "medium";
+    let wb_always_thinking = false;
     if let Some(obj) = wb_config.as_object_mut() {
         obj.insert("reasoningEffort".to_string(), serde_json::json!(wb_effort));
         obj.insert("alwaysThinkingEnabled".to_string(), serde_json::json!(wb_always_thinking));
@@ -2630,7 +2657,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 19;
+const APP_VERSION: u32 = 20;
 
 /// 获取当前软件版本号
 #[tauri::command]

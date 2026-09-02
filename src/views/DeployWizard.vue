@@ -13,24 +13,9 @@
           <div class="wb-step-label">检测平台</div>
         </div>
         <div class="wb-step-line" :class="{done:step>0}"></div>
-        <div class="wb-step" :class="{active:step>=1,done:step>1}">
+        <div class="wb-step" :class="{active:step>=1}">
           <div class="wb-step-dot">2</div>
-          <div class="wb-step-label">选模型</div>
-        </div>
-        <div class="wb-step-line" :class="{done:step>1}"></div>
-        <div class="wb-step" :class="{active:step>=2,done:step>2}">
-          <div class="wb-step-dot">3</div>
-          <div class="wb-step-label">推理配置</div>
-        </div>
-        <div class="wb-step-line" :class="{done:step>2}"></div>
-        <div class="wb-step" :class="{active:step>=3,done:step>3}">
-          <div class="wb-step-dot">4</div>
-          <div class="wb-step-label">默认模型</div>
-        </div>
-        <div class="wb-step-line" :class="{done:step>3}"></div>
-        <div class="wb-step" :class="{active:step>=4}">
-          <div class="wb-step-dot">5</div>
-          <div class="wb-step-label">确认部署</div>
+          <div class="wb-step-label">一键部署</div>
         </div>
       </div>
 
@@ -58,74 +43,20 @@
         <div v-if="detectDone && installedCount===0" class="wb-warn">未检测到任何平台，请先安装</div>
       </div>
 
-      <!-- Step 1: 选模型 -->
+      <!-- Step 1: 确认一键部署（固定20模型，无任何选择项） -->
       <div v-if="step===1" class="wb-step-content">
-        <div class="wb-model-toolbar">
-          <span>{{ selectedModels.length }}/{{ ALL_MODELS.length }} 个模型</span>
-          <button @click="selectAll">全选</button>
-          <button @click="selectNone">取消</button>
-        </div>
-        <div class="wb-model-scroll">
-          <div v-for="m in ALL_MODELS" :key="m.id" class="wb-model-row"
-            :class="{sel:selectedModels.includes(m.id)}" @click="toggleModel(m.id)">
-            <span class="mcheck">{{ selectedModels.includes(m.id) ? '✅' : '⬜' }}</span>
-            <span class="mname">{{ m.name }}</span>
-            <span class="mdesc">{{ m.desc }}</span>
-            <span v-if="m.isTier" class="mtag auto">调度档</span>
-            <span v-else-if="m.supportsReasoning" class="mtag r">推理</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2: 推理配置 -->
-      <div v-if="step===2" class="wb-step-content">
-        <div class="wb-reason-hint">选择推理等级（部署后可在平台内切换模型时使用）</div>
-        <div class="wb-reasoning-grid">
-          <div v-for="r in REASONING_LEVELS" :key="r.value" class="wb-reason-card"
-            :class="{sel:reasoningLevel===r.value}" @click="reasoningLevel=r.value">
-            <div class="wb-reason-name">{{ r.label }}</div>
-            <div class="wb-reason-cost">{{ r.cost }}</div>
-          </div>
-        </div>
-        <label class="wb-deep-toggle">
-          <input type="checkbox" v-model="deepThinking" /> 深度思考
-          <span v-if="!deepThinking" style="color:#86909c;font-size:12px">（开启燃烧token进入深度思考，积分费的快，建议关闭）</span>
-          <span v-else style="color:#ff4d4f;font-size:12px">⚠️ 开启燃烧token进入深度思考，积分费的快</span>
-        </label>
-        <div class="wb-rate-notice">
-          💡 百分百1比1倍率抵扣同步 — 各推理等级积分消耗按上游实际倍率1:1同步抵扣，无任何额外加价
-        </div>
-      </div>
-
-      <!-- Step 3: 选默认模型 -->
-      <div v-if="step===3" class="wb-step-content">
-        <div class="wb-default-hint">
-          选择部署后客户端默认使用的模型<br>
-          <span style="color:#86909c;font-size:12px">部署完成后可随时在各平台自定义模型中切换其他模型</span>
-        </div>
-        <div class="wb-model-scroll">
-          <div v-for="m in selectedModelObjs" :key="m.id" class="wb-model-row"
-            :class="{sel:defaultModel===m.id}" @click="defaultModel=m.id">
-            <span class="mcheck">{{ defaultModel===m.id ? '🔵' : '⚪' }}</span>
-            <span class="mname">{{ m.name }}</span>
-            <span class="mdesc">{{ m.desc }}</span>
-            <span v-if="m.isTier" class="mtag auto">调度档</span>
-            <span v-else-if="m.recommended" class="mtag r">推荐</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 4: 确认 -->
-      <div v-if="step===4" class="wb-step-content">
         <div class="wb-confirm-box">
           <div class="wb-confirm-row"><span>平台</span><b>{{ selectedPlatforms.map(p=>PLATFORMS[p].name).join(', ') }}</b></div>
-          <div class="wb-confirm-row"><span>模型数</span><b>{{ selectedModels.length }} 个</b></div>
-          <div class="wb-confirm-row"><span>默认模型</span><b>{{ ALL_MODELS.find(m=>m.id===defaultModel)?.name || defaultModel }}</b></div>
-          <div class="wb-confirm-row"><span>推理等级</span><b>{{ getLevel()?.label }} ({{ getLevel()?.cost }})</b></div>
-          <div class="wb-confirm-row"><span>深度思考</span><b>{{ deepThinking?'✅':'❌' }}</b></div>
+          <div class="wb-confirm-row"><span>模型数</span><b>{{ DEPLOY_MODELS.length }} 个（全部模型自动配置）</b></div>
+          <div class="wb-confirm-row"><span>模型标识</span><b>NB</b></div>
+          <div class="wb-confirm-row"><span>思考强度</span><b>低/中/高/超高/极致 5档可选（默认中档）</b></div>
+          <div class="wb-confirm-row"><span>深度思考</span><b>默认关闭（省积分）</b></div>
+        </div>
+        <div class="wb-rate-notice">
+          💡 提示：部署后认准 <b>NB</b> 标识的模型，鼠标触碰可切换思考强度
         </div>
         <button class="wb-deploy-go" @click="doDeploy" :disabled="deploying">
-          {{ deploying ? '部署中...' : '确认部署' }}
+          {{ deploying ? '部署中...' : '🚀 一键部署' }}
         </button>
       </div>
 
@@ -150,8 +81,21 @@
         <div class="wb-big-warning">
           <div class="wb-big-warning-title">部署完成</div>
           <div class="wb-big-warning-content">
-            默认模型 <b style="color:#00b42a">{{ ALL_MODELS.find(m=>m.id===defaultModel)?.name }}</b> 已自动配置，重启后即可使用！<br><br>
-            <span style="color:#86909c">如需切换其他模型，可在各平台的「自定义模型」中随时更换</span>
+            全部 <b style="color:#00b42a">{{ DEPLOY_MODELS.length }} 个模型</b>已按 <b style="color:#00b42a">NB</b> 品牌标识自动配置！<br>
+            认准 <b style="color:#00b42a">快速 / 均衡 / 极致</b> 三档和 <b style="color:#00b42a">NB:glm-5.3</b> 等标识的模型<br>
+            <span style="color:#86909c">鼠标触碰模型可切换思考强度</span>
+          </div>
+        </div>
+
+        <div class="wb-reminder-section">
+          <div class="wb-reminder-title">⚠️ 必看：如何选模型、切换思考强度（决定积分消耗）</div>
+          <img class="wb-reminder-img" src="https://img.alicdn.com/imgextra/i4/2200553779391/O1CN01YsFirgvC4JB2jZ3K_!!2200553779391.png" alt="模型选择与思考强度操作示意" />
+          <div class="wb-reminder-list">
+            <div>1. 模型下拉列表里找 <b>带 NB 前缀的模型</b>（如 快速/均衡/极致、NB:glm-5.3 等）</div>
+            <div>2. <b>必须选自定义模型下面的</b>（不是官方模型，否则不消耗我们的积分）</div>
+            <div>3. 鼠标触碰选中的模型，会出现<b>「思考强度」子菜单</b>（默认选中"中"档）</div>
+            <div>4. 强度从低到高五档可选：<b>低 / 中 / 高 / 超高 / 极致</b></div>
+            <div>5. 强度越高，<b>积分消耗越快</b>；强度越低越省积分</div>
           </div>
         </div>
 
@@ -183,22 +127,41 @@
 
 <script setup>
 import { ref, computed } from "vue";
-import { PLATFORMS, REASONING_LEVELS, buildDeployConfig, executeDeploy } from "../utils/deploy.js";
-import { ALL_MODELS, buildModelConfig } from "../utils/models.js";
+import { PLATFORMS, buildDeployConfig, executeDeploy } from "../utils/deploy.js";
 import { openLink } from "../utils/api.js";
 
 const props = defineProps({ apiKey: String, serverPlatform: String });
 const emit = defineEmits(["done", "cancel"]);
+
+// 固定部署模型清单（20个，参考格式1:1，不增删）
+const DEPLOY_MODELS = [
+  { id: "fast-model", iconUrl: "https://download.codebuddy.cn/model-icon/wb-fast.svg" },
+  { id: "balanced-model", iconUrl: "https://download.codebuddy.cn/model-icon/wb-balanced.svg" },
+  { id: "deep-model", iconUrl: "https://download.codebuddy.cn/model-icon/wb-primary.svg" },
+  { id: "glm-5.3" },
+  { id: "glm-5.3-flash" },
+  { id: "glm-5.2" },
+  { id: "glm-5.1" },
+  { id: "glm-5.0-turbo" },
+  { id: "glm-5v-turbo" },
+  { id: "deepseek-v3" },
+  { id: "deepseek-r1" },
+  { id: "deepseek-v3.2" },
+  { id: "deepseek-v4-flash" },
+  { id: "deepseek-v4-pro" },
+  { id: "kimi-k3" },
+  { id: "kimi-k2.7" },
+  { id: "kimi-k2.6" },
+  { id: "minimax-m2.7" },
+  { id: "minimax-m3" },
+  { id: "hy3-preview" },
+];
 
 const step = ref(0);
 const detecting = ref(false);
 const detectDone = ref(false);
 const installed = ref({});
 const selectedPlatforms = ref([]);
-const selectedModels = ref(ALL_MODELS.map(m => m.id));
-const defaultModel = ref("fast-model");
-const reasoningLevel = ref("medium");
-const deepThinking = ref(false);
 const deploying = ref(false);
 const deployResults = ref([]);
 const showVideo = ref(false);
@@ -207,13 +170,10 @@ const toast = ref({ show: false, msg: "", type: "info" });
 function showToast(msg, type="info") { toast.value = { show:true, msg, type }; setTimeout(()=>{toast.value={show:false,msg:"",type:"info"};},3000); }
 
 const installedCount = computed(() => Object.values(installed.value).filter(p => p?.installed).length);
-const selectedModelObjs = computed(() => ALL_MODELS.filter(m => selectedModels.value.includes(m.id)));
 const allSuccess = computed(() => deployResults.value.length > 0 && deployResults.value.every(r => r.success));
 const successPlatforms = computed(() => deployResults.value.filter(r => r.success).map(r => r.platform));
 const canNext = computed(() => {
   if (step.value === 0) return detectDone.value && selectedPlatforms.value.length > 0;
-  if (step.value === 1) return selectedModels.value.length > 0;
-  if (step.value === 3) return !!defaultModel.value;
   return true;
 });
 
@@ -230,18 +190,6 @@ function downloadPlatform(key) {
   const url = PLATFORMS[key]?.url;
   if (url) openLink(url);
 }
-
-function toggleModel(id) {
-  const i = selectedModels.value.indexOf(id);
-  if (i >= 0) selectedModels.value.splice(i, 1);
-  else selectedModels.value.push(id);
-  if (!selectedModels.value.includes(defaultModel.value) && selectedModels.value.length > 0) {
-    defaultModel.value = selectedModels.value[0];
-  }
-}
-
-function selectAll() { selectedModels.value = ALL_MODELS.map(m => m.id); }
-function selectNone() { selectedModels.value = []; }
 
 async function detectPlatforms() {
   detecting.value = true;
@@ -264,23 +212,18 @@ async function detectPlatforms() {
   finally { detecting.value = false; }
 }
 
-function getLevel() { return REASONING_LEVELS.find(r => r.value === reasoningLevel.value); }
-
 async function doDeploy() {
   deploying.value = true;
   deployResults.value = [];
   try {
     const domainMap = { glm: "jf", tk: "tk" };
     const baseUrl = "https://" + (domainMap[props.serverPlatform] || props.serverPlatform) + ".ainb7.com";
-    // 按官方顺序排列：默认模型在最前，其余按 ALL_MODELS 官方顺序
-    const remainingIds = ALL_MODELS.map(m => m.id).filter(id => id !== defaultModel.value && selectedModels.value.includes(id));
-    const orderedIds = [defaultModel.value, ...remainingIds];
-    const modelObjs = orderedIds.map(id => ALL_MODELS.find(m => m.id === id)).filter(Boolean);
+    // 固定20模型清单，不做任何用户选择
+    const config = buildDeployConfig(selectedPlatforms.value[0], props.apiKey, baseUrl, "fast-model", "medium", false);
+    config.model_configs = DEPLOY_MODELS.map(m => ({ ...m }));
+    config.selected_model_ids = DEPLOY_MODELS.map(m => m.id);
     for (const p of selectedPlatforms.value) {
-      const configs = modelObjs.map(m => buildModelConfig(m, reasoningLevel.value, deepThinking.value));
-      const config = buildDeployConfig(p, props.apiKey, baseUrl, defaultModel.value, reasoningLevel.value, deepThinking.value);
-      config.model_configs = configs;
-      config.selected_model_ids = orderedIds;
+      config.platform = p;
       try {
         const result = await executeDeploy(config);
         deployResults.value.push({ platform: p, success: true, message: typeof result === "string" ? result : "成功" });
@@ -437,4 +380,11 @@ async function restartApp(platformKey) {
 .wb-toast.success { background:var(--wb-primary); }
 .wb-toast.error { background:#f53f3f; }
 .fade-enter-active, .fade-leave-active { transition:opacity .3s; }
+
+/* 部署完成提醒图 */
+.wb-reminder-section { margin:16px 0; padding:14px; background:#fff7e8; border:1px solid #ffb84d; border-radius:10px; text-align:left; }
+.wb-reminder-title { font-weight:bold; color:#d46b08; margin-bottom:10px; font-size:14px; }
+.wb-reminder-img { width:100%; border-radius:8px; margin-bottom:10px; display:block; }
+.wb-reminder-list { font-size:13px; color:#4e5969; line-height:1.9; }
+.wb-reminder-list b { color:#d46b08; }
 </style>
