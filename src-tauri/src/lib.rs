@@ -575,6 +575,39 @@ fn deploy_claude_code(config: &DeployConfig) -> Result<String, String> {
     Ok(format!("Claude Code: {} 个模型已配置 (默认: {})，推理等级: {} (可选: {})", config.selected_model_ids.len(), config.selected_model_ids.first().unwrap_or(&config.model), highest, levels.join(",")))
 }
 
+/// v21.2 官方上下文配置(copilot.tencent.com/v3/config 实测): (maxInputTokens, maxOutputTokens, 是否带contextWindow)
+/// 官方仅9个模型带 contextWindow 选择器; 无选择器的模型删除 contextWindow 字段
+fn official_ctx(model_id: &str) -> (u64, u64, bool) {
+    match model_id {
+        "glm-5.3" => (1000000, 48000, true),
+        "glm-5.3-flash" => (1000000, 32000, true),
+        "glm-5.2" => (1000000, 48000, true),
+        "deepseek-v4-pro" => (1000000, 50000, true),
+        "deepseek-v4-flash" => (1000000, 50000, true),
+        "kimi-k3" => (1000000, 32000, true),
+        "minimax-m3" => (512000, 128000, true),
+        "fast-model" | "balanced-model" | "deep-model" => (200000, 8192, true),
+        "glm-5.1" | "glm-5.0-turbo" | "glm-5v-turbo" | "minimax-m2.7" => (200000, 8192, false),
+        "deepseek-v3" | "deepseek-r1" | "deepseek-v3.2" => (96000, 8192, false),
+        "kimi-k2.7" | "kimi-k2.6" => (256000, 8192, false),
+        "hy3-preview" => (192000, 8192, false),
+        _ => (200000, 8192, false),
+    }
+}
+
+/// v21.2 官方 contextWindow JSON(仅带选择器的9个模型; 三档 supportedLengths 含 1000000)
+fn official_context_window(model_id: &str) -> serde_json::Value {
+    match model_id {
+        "minimax-m3" => serde_json::json!({"defaultLength": 200000, "supportedLengths": [200000, 512000]}),
+        "fast-model" | "balanced-model" | "deep-model"
+        | "glm-5.3" | "glm-5.3-flash" | "glm-5.2"
+        | "deepseek-v4-pro" | "deepseek-v4-flash" | "kimi-k3" => {
+            serde_json::json!({"defaultLength": 200000, "supportedLengths": [200000, 1000000]})
+        }
+        _ => serde_json::json!({"defaultLength": 200000, "supportedLengths": [200000, 1000000]}),
+    }
+}
+
 /// CodeBuddy CN 部署: 写入 ~/.codebuddy/models.json
 /// 格式（实际能用的）:
 /// {"models": [{id, name, vendor:"user", url, apiKey, supportsToolCall:true, supportsImages:true,
@@ -595,7 +628,7 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
         format!("{}/v1", config.base_url.trim_end_matches('/'))
     };
 
-    // v21.1 统一模板: 与 WorkBuddy 相同格式; 仅第一个模型 isDefault=true
+    // v21.2 统一模板: 与 WorkBuddy 相同格式; 仅第一个模型 isDefault=true; 上下文按官方值
     let new_models: Vec<serde_json::Value> = config.selected_model_ids.iter().enumerate().map(|(i, mid)| {
         let mc = config.model_configs.iter().find(|m| {
             m.get("id").and_then(|v| v.as_str()) == Some(mid.as_str())
@@ -607,23 +640,20 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
             "deep-model" => Some("极致"),
             _ => None,
         };
+        let (max_in, max_out, has_ctx) = official_ctx(mid);
         let mut entry = serde_json::json!({
             "id": mid,
             "name": tier_name.unwrap_or("NB"),
             "vendor": "NB",
             "apiKey": config.api_key,
             "url": cb_url,
-            "maxInputTokens": 360000,
-            "maxOutputTokens": 8192,
+            "maxInputTokens": max_in,
+            "maxOutputTokens": max_out,
             "supportsToolCall": true,
             "supportsImages": true,
             "supportsReasoning": true,
-            "maxAllowedSize": 360000,
+            "maxAllowedSize": max_in,
             "isDefault": i == 0,
-            "contextWindow": {
-                "defaultLength": 200000,
-                "supportedLengths": if is_tier { serde_json::json!([100000, 200000]) } else { serde_json::json!([128000, 200000]) }
-            },
             "reasoning": {
                 "canDisableThinking": true,
                 "defaultEffort": "medium",
@@ -632,6 +662,11 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
                 "supportedEfforts": ["low", "medium", "high", "xhigh", "max"]
             }
         });
+        if has_ctx {
+            if let Some(obj) = entry.as_object_mut() {
+                obj.insert("contextWindow".to_string(), official_context_window(mid));
+            }
+        }
         if is_tier {
             if let Some(obj) = entry.as_object_mut() {
                 obj.insert("iconUrl".to_string(), serde_json::json!(
@@ -713,7 +748,7 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
     } else {
         format!("{}/v1", config.base_url.trim_end_matches('/'))
     };
-    // v21.1 统一模板: 所有模型同一格式, 思考强度可选的关键
+    // v21.2 统一模板: 所有模型同一格式; 上下文按官方值(9个模型带选择器,其余删字段)
     // 三档 name=快速/均衡/极致(纯中文), 其他=NB; vendor=NB品牌标识; iconUrl仅三档有
     let models_json_entries: Vec<serde_json::Value> = config.selected_model_ids.iter().map(|mid| {
         let mc = config.model_configs.iter().find(|m| {
@@ -726,22 +761,19 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
             "deep-model" => Some("极致"),
             _ => None,
         };
+        let (max_in, max_out, has_ctx) = official_ctx(mid);
         let mut entry = serde_json::json!({
             "id": mid,
             "name": tier_name.unwrap_or("NB"),
             "vendor": "NB",
             "apiKey": config.api_key,
             "url": wb_url,
-            "maxInputTokens": 360000,
-            "maxOutputTokens": 8192,
+            "maxInputTokens": max_in,
+            "maxOutputTokens": max_out,
             "supportsToolCall": true,
             "supportsImages": true,
             "supportsReasoning": true,
-            "maxAllowedSize": 360000,
-            "contextWindow": {
-                "defaultLength": 200000,
-                "supportedLengths": if is_tier { serde_json::json!([100000, 200000]) } else { serde_json::json!([128000, 200000]) }
-            },
+            "maxAllowedSize": max_in,
             "reasoning": {
                 "canDisableThinking": true,
                 "defaultEffort": "medium",
@@ -750,6 +782,12 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
                 "supportedEfforts": ["low", "medium", "high", "xhigh", "max"]
             }
         });
+        // contextWindow 仅官方带选择器的9个模型写入
+        if has_ctx {
+            if let Some(obj) = entry.as_object_mut() {
+                obj.insert("contextWindow".to_string(), official_context_window(mid));
+            }
+        }
         // iconUrl 仅三档有(官方URL), 其他模型不写
         if is_tier {
             if let Some(obj) = entry.as_object_mut() {
@@ -812,22 +850,19 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
             "deep-model" => Some("极致"),
             _ => None,
         };
+        let (max_in, max_out, has_ctx) = official_ctx(mid);
         let mut entry = serde_json::json!({
             "id": format!("custom-local:{}", mid),
             "name": tier_name.unwrap_or("NB"),
             "vendor": "NB",
             "url": wb_url,
             "apiKey": config.api_key,
-            "maxInputTokens": 360000,
-            "maxOutputTokens": 8192,
+            "maxInputTokens": max_in,
+            "maxOutputTokens": max_out,
             "supportsToolCall": true,
             "supportsImages": true,
             "supportsReasoning": true,
-            "maxAllowedSize": 360000,
-            "contextWindow": {
-                "defaultLength": 200000,
-                "supportedLengths": if is_tier { serde_json::json!([100000, 200000]) } else { serde_json::json!([128000, 200000]) }
-            },
+            "maxAllowedSize": max_in,
             "reasoning": {
                 "canDisableThinking": true,
                 "defaultEffort": "medium",
@@ -836,6 +871,11 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
                 "supportedEfforts": ["low", "medium", "high", "xhigh", "max"]
             }
         });
+        if has_ctx {
+            if let Some(obj) = entry.as_object_mut() {
+                obj.insert("contextWindow".to_string(), official_context_window(mid));
+            }
+        }
         if is_tier {
             if let Some(obj) = entry.as_object_mut() {
                 obj.insert("iconUrl".to_string(), serde_json::json!(
@@ -2657,7 +2697,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 20;
+const APP_VERSION: u32 = 21;
 
 /// 获取当前软件版本号
 #[tauri::command]
