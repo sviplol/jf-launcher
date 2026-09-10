@@ -298,6 +298,9 @@ const guideVideos = [
 ];
 
 const CHANGELOG = {
+  22: [
+    "DeepSeek V4 Flash 升级为 V4.1：模型更新为 deepseek-v4.1-flash",
+  ],
   21: [
     "上下文窗口按官方值1:1修复：9个模型带选择器(200K/1M档)，其余删除无效字段",
     "maxInputTokens/maxOutputTokens 对齐官方实测值",

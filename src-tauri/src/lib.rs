@@ -583,7 +583,7 @@ fn official_ctx(model_id: &str) -> (u64, u64, bool) {
         "glm-5.3-flash" => (1000000, 32000, true),
         "glm-5.2" => (1000000, 48000, true),
         "deepseek-v4-pro" => (1000000, 50000, true),
-        "deepseek-v4-flash" => (1000000, 50000, true),
+        "deepseek-v4-flash" | "deepseek-v4.1-flash" => (1000000, 50000, true),
         "kimi-k3" => (1000000, 32000, true),
         "minimax-m3" => (512000, 128000, true),
         "fast-model" | "balanced-model" | "deep-model" => (200000, 8192, true),
@@ -601,7 +601,7 @@ fn official_context_window(model_id: &str) -> serde_json::Value {
         "minimax-m3" => serde_json::json!({"defaultLength": 200000, "supportedLengths": [200000, 512000]}),
         "fast-model" | "balanced-model" | "deep-model"
         | "glm-5.3" | "glm-5.3-flash" | "glm-5.2"
-        | "deepseek-v4-pro" | "deepseek-v4-flash" | "kimi-k3" => {
+        | "deepseek-v4-pro" | "deepseek-v4-flash" | "deepseek-v4.1-flash" | "kimi-k3" => {
             serde_json::json!({"defaultLength": 200000, "supportedLengths": [200000, 1000000]})
         }
         _ => serde_json::json!({"defaultLength": 200000, "supportedLengths": [200000, 1000000]}),
@@ -2697,7 +2697,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 21;
+const APP_VERSION: u32 = 22;
 
 /// 获取当前软件版本号
 #[tauri::command]
