@@ -744,15 +744,133 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
 /// WorkBuddy 部署: 写入 ~/.workbuddy/models.json
 /// 格式（用户手动配置验证可用）:
 /// [{id, name, vendor:"Custom", url, apiKey, supportsToolCall, supportsImages, supportsReasoning, useCustomProtocol:false, reasoning:{supportedEfforts:["max"]}}]
+/// v24: 等 models.json 稳定 — 轮询直到模型数恢复到期望值(WorkBuddy 启动清空后会自己写回)
+/// 返回 true=文件稳定且模型数正确; false=超时未恢复(调用方需补写)
+fn wait_models_json_stable(models_path: &Path, expected: usize, timeout_secs: u64) -> bool {
+    let start = std::time::Instant::now();
+    // 连续3次(间隔1秒)读到期望模型数才算稳定
+    let mut consecutive_ok = 0;
+    loop {
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+        let ok = match read_json_file(models_path) {
+            Some(d) => {
+                let n = d.get("models").and_then(|m| m.as_array()).map(|a| a.len()).unwrap_or(0);
+                n == expected && n > 0
+            }
+            None => false,
+        };
+        if ok {
+            consecutive_ok += 1;
+            if consecutive_ok >= 3 { return true; }
+        } else {
+            consecutive_ok = 0;
+        }
+        if start.elapsed().as_secs() >= timeout_secs {
+            return false;
+        }
+    }
+}
+
+/// v24: 检测 WorkBuddy 是否正在运行
+fn workbuddy_running() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        let out = std::process::Command::new("tasklist")
+            .args(&["/FI", "IMAGENAME eq WorkBuddy.exe", "/NH"])
+            .no_window()
+            .output();
+        match out {
+            Ok(o) => String::from_utf8_lossy(&o.stdout).to_lowercase().contains("workbuddy.exe"),
+            Err(_) => false,
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let out = std::process::Command::new("pgrep").args(&["-f", "WorkBuddy"]).output();
+        match out { Ok(o) => !o.stdout.is_empty(), Err(_) => false }
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    { false }
+}
+
+/// v24: 从运行中的 WorkBuddy 进程命令行解析数据目录 (models.json 存放位置)
+/// WorkBuddy 启动参数带 --user-data-dir="...\WorkBuddy\app" → 数据根 = 该目录的父目录
+/// 未运行或解析失败返回 None → 用默认 ~/.workbuddy
+fn workbuddy_data_dir_from_process() -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        // PowerShell CIM 拿全部 WorkBuddy.exe 的命令行
+        let out = std::process::Command::new("powershell")
+            .args(&["-NoProfile", "-c",
+                "(Get-CimInstance Win32_Process -Filter \"Name='WorkBuddy.exe'\").CommandLine"])
+            .no_window()
+            .output()
+            .ok()?;
+        let text = String::from_utf8_lossy(&out.stdout);
+        // 找 --user-data-dir="..." 参数
+        for line in text.lines() {
+            let l = line.trim();
+            if let Some(idx) = l.find("--user-data-dir=") {
+                let rest = &l[idx + "--user-data-dir=".len()..];
+                // 带引号: --user-data-dir="C:\...app"
+                let dir = if let Some(stripped) = rest.strip_prefix('"') {
+                    match stripped.find('"') { Some(end) => &stripped[..end], None => continue }
+                } else {
+                    // 不带引号: 取到下一个空格
+                    match rest.find(' ') { Some(end) => &rest[..end], None => rest }
+                };
+                let app_dir = std::path::Path::new(dir);
+                // app 子目录 → 数据根是父目录 (...\WorkBuddy\app 的父目录)
+                if let Some(parent) = app_dir.parent() {
+                    let root = parent.to_path_buf();
+                    if root.join("models.json").exists() || root.join("local_storage").exists() {
+                        return Some(root);
+                    }
+                    // 父目录不匹配特征也返回(可能自定义安装), 只要父目录存在
+                    if root.exists() {
+                        return Some(root);
+                    }
+                }
+                // user-data-dir 本身就是数据根(不带 app 子目录的情况)
+                let itself = app_dir.to_path_buf();
+                if itself.exists() {
+                    return Some(itself);
+                }
+            }
+        }
+        None
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // macOS: 默认 ~/.workbuddy (进程参数解析省略, defaults write 场景罕见)
+        None
+    }
+}
+
 fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
-    let wb_dir = dirs::home_dir().ok_or("无法获取用户目录")?.join(".workbuddy");
+    // v24 热加载: WorkBuddy 后台运行中 → 不杀进程, 从进程命令行定位数据目录
+    let was_running = workbuddy_running();
+    let wb_dir = if was_running {
+        // 运行中: 通过进程 --user-data-dir 参数定位 models.json 真实存放位置
+        match workbuddy_data_dir_from_process() {
+            Some(d) => d,
+            None => dirs::home_dir().ok_or("无法获取用户目录")?.join(".workbuddy"),
+        }
+    } else {
+        dirs::home_dir().ok_or("无法获取用户目录")?.join(".workbuddy")
+    };
     if !wb_dir.exists() {
         fs::create_dir_all(&wb_dir).map_err(|e| format!("创建目录失败: {}", e))?;
     }
 
-    // 关键: 部署前必须先关闭 WorkBuddy, 否则 WorkBuddy 退出时会把内存状态覆盖回 entry 文件
-    // v23: 用强化版 kill (循环确认进程真正退出, 防文件句柄未释放导致写空 models.json)
-    kill_workbuddy_processes_verified();
+    if was_running {
+        // v24 热加载模式: WorkBuddy 支持模型热加载, 运行中部署无需重启
+        // 不杀进程, 直接原子写入 (写失败时才在重试里降级杀进程)
+        println!("WorkBuddy 运行中 → 热加载模式(不重启), 数据目录: {}", wb_dir.display());
+    } else {
+        // 未运行: 保持 v23 强化 kill (防残留进程锁文件)
+        kill_workbuddy_processes_verified();
+    }
 
     // 写入 models.json (WorkBuddy 自定义模型模板文件)
     // 严格按用户手动添加验证可用的格式: name=id小写, 无 reasoning 字段
@@ -827,7 +945,7 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
         let serialized = serde_json::to_string_pretty(&models_json_obj)
             .map_err(|e| format!("序列化失败: {}", e))?;
         if let Err(e) = fs::write(&tmp_path, &serialized) {
-            // 写失败 = 文件被占用 → 再杀一轮 WorkBuddy 进程后重试
+            // 写失败 = 文件被占用 → 热加载模式下降级杀进程, 关闭模式再杀一轮
             kill_workbuddy_processes_verified();
             last_err = format!("写入临时文件失败(第{}次): {}", attempt + 1, e);
             continue;
@@ -865,6 +983,34 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
             }
             None => return Err("models.json 写入后无法解析".into()),
         }
+    }
+
+    // v24: 稳定检测 — WorkBuddy 启动瞬间会把 models.json 清空成 {"models":[]},
+    // 约4~12秒后才从内存恢复写回。若我们写入后文件被清空, 轮询等它恢复;
+    // 超时(WorkBuddy 没有恢复)则补写一次我们自己的完整配置
+    if was_running {
+        let stable = wait_models_json_stable(&models_path, expected_count, 15);
+        if !stable {
+            // WorkBuddy 没有自己恢复 → 补写 (此时它启动序列已结束, 不会再被清空)
+            let _ = fs::write(&models_path, serde_json::to_string_pretty(&models_json_obj).unwrap_or_default());
+        }
+        // 后台延迟自愈: 15秒后再校验一次, 发现 []/空/数量不对 → 自动重写
+        let heal_path = models_path.clone();
+        let heal_content = serde_json::to_string_pretty(&models_json_obj).unwrap_or_default();
+        let heal_expected = expected_count;
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(15));
+            let need_heal = match read_json_file(&heal_path) {
+                Some(d) => {
+                    let n = d.get("models").and_then(|m| m.as_array()).map(|a| a.len()).unwrap_or(0);
+                    n != heal_expected || n == 0
+                }
+                None => true, // 文件损坏/被删
+            };
+            if need_heal {
+                let _ = fs::write(&heal_path, heal_content);
+            }
+        });
     }
 
     // 写入 local_storage/entry_*.info (WorkBuddy 实际运行时读取的配置文件)
@@ -1045,7 +1191,12 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
     }
     let _ = fs::write(&settings_path, serde_json::to_string_pretty(&wb_settings).unwrap_or_default());
 
-    Ok(format!("WorkBuddy: {} 个模型已写入 models.json + {} 个 entry 文件 + 全局配置 reasoningEffort={}", config.selected_model_ids.len(), written_count, wb_effort))
+    // v24: 返回消息带热加载标识, 前端据此显示"无需重启"提示
+    if was_running {
+        Ok(format!("[热加载] WorkBuddy: {} 个模型已写入 models.json + {} 个 entry 文件 + 全局配置 (无需重启, 模型列表即时生效)", config.selected_model_ids.len(), written_count))
+    } else {
+        Ok(format!("WorkBuddy: {} 个模型已写入 models.json + {} 个 entry 文件 + 全局配置 reasoningEffort={} (需重启 WorkBuddy 生效)", config.selected_model_ids.len(), written_count, wb_effort))
+    }
 }
 
 /// 关闭所有 WorkBuddy 进程 (部署前必须关闭, 否则退出时会覆盖 entry 文件)
@@ -2802,12 +2953,18 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 23;
+const APP_VERSION: u32 = 24;
 
 /// 获取当前软件版本号
 #[tauri::command]
 fn get_app_version() -> u32 {
     APP_VERSION
+}
+
+/// v24: WorkBuddy 是否正在运行 (前端热加载提示用)
+#[tauri::command]
+fn is_workbuddy_running() -> bool {
+    workbuddy_running()
 }
 
 /// 检查更新：请求远程版本接口，返回是否有新版本
@@ -2909,6 +3066,7 @@ pub fn run() {
             open_url,
             clear_platform_deploy,
             get_app_version,
+            is_workbuddy_running,
             check_update,
         ])
         .run(tauri::generate_context!())

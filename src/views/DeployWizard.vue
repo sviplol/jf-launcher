@@ -69,7 +69,12 @@
           <span :style="{color:r.success?'#00b42a':'#f53f3f'}">{{ r.success?'✅ '+r.message:'❌ '+r.error }}</span>
         </div>
 
-        <div v-if="successPlatforms.length > 0" class="wb-restart-section">
+        <div v-if="workbuddyHotLoaded" class="wb-hotload-banner">
+          ⚡ WorkBuddy 正在后台运行，配置已<b>热加载</b> —— <b>无需重启</b>，模型列表即时生效！
+          <div class="wb-hotload-sub">如模型列表暂未出现或显示为空，请等 3 秒后重新点开下拉列表（WorkBuddy 正在同步配置）</div>
+        </div>
+
+        <div v-else-if="successPlatforms.length > 0" class="wb-restart-section">
           <div class="wb-restart-title">🔄 配置已写入，请重启以下软件使配置生效：</div>
           <div class="wb-restart-buttons">
             <button v-for="p in successPlatforms" :key="p" class="wb-restart-btn" @click="restartApp(p)">
@@ -163,6 +168,7 @@ const detectDone = ref(false);
 const installed = ref({});
 const selectedPlatforms = ref([]);
 const deploying = ref(false);
+const workbuddyHotLoaded = ref(false); // v24: WorkBuddy 热加载模式(运行中部署无需重启)
 const deployResults = ref([]);
 const showVideo = ref(false);
 const toast = ref({ show: false, msg: "", type: "info" });
@@ -227,9 +233,22 @@ async function doDeploy() {
       try {
         const result = await executeDeploy(config);
         deployResults.value.push({ platform: p, success: true, message: typeof result === "string" ? result : "成功" });
+        // v24: 捕获热加载标识(Rust 返回 "[热加载] WorkBuddy: ...")
+        if (p === "workbuddy" && typeof result === "string" && result.startsWith("[热加载]")) {
+          workbuddyHotLoaded.value = true;
+        }
       } catch(e) {
         deployResults.value.push({ platform: p, success: false, error: e.message });
       }
+    }
+    // v24: 未捕获到热加载标识时也查一次进程状态兜底
+    if (selectedPlatforms.value.includes("workbuddy") && !workbuddyHotLoaded.value) {
+      try {
+        if (window.__TAURI_INTERNALS__) {
+          const { invoke } = await import("@tauri-apps/api/core");
+          if (await invoke("is_workbuddy_running")) workbuddyHotLoaded.value = true;
+        }
+      } catch(e) { /* 查询失败按未运行处理 */ }
     }
     step.value = 5;
   } catch(e) { showToast("失败: " + e.message, "error"); }
@@ -380,6 +399,10 @@ async function restartApp(platformKey) {
 .wb-toast.success { background:var(--wb-primary); }
 .wb-toast.error { background:#f53f3f; }
 .fade-enter-active, .fade-leave-active { transition:opacity .3s; }
+
+/* v24 热加载横幅 */
+.wb-hotload-banner { margin:16px 0; padding:14px 18px; background:#e8ffea; border:1px solid #00b42a; border-radius:10px; color:#00832a; font-size:15px; text-align:center; }
+.wb-hotload-sub { margin-top:6px; font-size:12px; color:#4e5969; }
 
 /* 部署完成提醒图 */
 .wb-reminder-section { margin:16px 0; padding:14px; background:#fff7e8; border:1px solid #ffb84d; border-radius:10px; text-align:left; }
