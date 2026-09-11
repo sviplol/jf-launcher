@@ -705,8 +705,24 @@ fn deploy_codebuddy(config: &DeployConfig) -> Result<String, String> {
     all_models.extend(new_models);
 
     let out = serde_json::json!({"models": all_models});
-    fs::write(&models_path, serde_json::to_string_pretty(&out).unwrap())
-        .map_err(|e| format!("写入失败: {}", e))?;
+    // v23: CodeBuddy 同样原子写入 + 读回验证非空
+    let cb_tmp = cb_dir.join("models.json.tmp");
+    let cb_serialized = serde_json::to_string_pretty(&out)
+        .map_err(|e| format!("序列化失败: {}", e))?;
+    fs::write(&cb_tmp, cb_serialized)
+        .map_err(|e| format!("写入临时文件失败: {}", e))?;
+    fs::rename(&cb_tmp, &models_path)
+        .map_err(|e| format!("替换 models.json 失败: {}", e))?;
+    // 读回验证非空
+    match read_json_file(&models_path) {
+        Some(d) => {
+            let n = d.get("models").and_then(|m| m.as_array()).map(|a| a.len()).unwrap_or(0);
+            if n == 0 {
+                return Err("CodeBuddy models.json 写入后为空".into());
+            }
+        }
+        None => return Err("CodeBuddy models.json 写入后无法解析".into()),
+    }
 
     // 写入全局配置: settings.json (v21.1: medium/false 思考强度可选)
     let cb_settings_path = cb_dir.join("settings.json");
@@ -735,7 +751,8 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
     }
 
     // 关键: 部署前必须先关闭 WorkBuddy, 否则 WorkBuddy 退出时会把内存状态覆盖回 entry 文件
-    kill_workbuddy_processes();
+    // v23: 用强化版 kill (循环确认进程真正退出, 防文件句柄未释放导致写空 models.json)
+    kill_workbuddy_processes_verified();
 
     // 写入 models.json (WorkBuddy 自定义模型模板文件)
     // 严格按用户手动添加验证可用的格式: name=id小写, 无 reasoning 字段
@@ -800,8 +817,55 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
     }).collect();
     // models.json 必须是对象格式 {"models": [...]}, 不能是数组 (WorkBuddy Provider只认对象)
     let models_json_obj = serde_json::json!({"models": models_json_entries});
-    fs::write(&models_path, serde_json::to_string_pretty(&models_json_obj).unwrap())
-        .map_err(|e| format!("写入 models.json 失败: {}", e))?;
+    // v23: 原子写入 + 读回验证 + 失败重试(最多3次) — 防止文件被占用产生空文件
+    let expected_count = config.selected_model_ids.len();
+    let mut written_ok = false;
+    let mut last_err = String::new();
+    for attempt in 0..3 {
+        // 原子写入: 先写 tmp 再 rename(禁止清空原文件)
+        let tmp_path = wb_dir.join("models.json.tmp");
+        let serialized = serde_json::to_string_pretty(&models_json_obj)
+            .map_err(|e| format!("序列化失败: {}", e))?;
+        if let Err(e) = fs::write(&tmp_path, &serialized) {
+            // 写失败 = 文件被占用 → 再杀一轮 WorkBuddy 进程后重试
+            kill_workbuddy_processes_verified();
+            last_err = format!("写入临时文件失败(第{}次): {}", attempt + 1, e);
+            continue;
+        }
+        if let Err(e) = fs::rename(&tmp_path, &models_path) {
+            kill_workbuddy_processes_verified();
+            last_err = format!("替换 models.json 失败(第{}次): {}", attempt + 1, e);
+            continue;
+        }
+        // 读回验证: 确认模型数量正确且非空
+        match read_json_file(&models_path) {
+            Some(d) => {
+                let n = d.get("models").and_then(|m| m.as_array()).map(|a| a.len()).unwrap_or(0);
+                if n == expected_count && n > 0 {
+                    written_ok = true;
+                    break;
+                } else {
+                    last_err = format!("写入后验证失败: 期望{}个模型, 实际{}个(第{}次)", expected_count, n, attempt + 1);
+                }
+            }
+            None => { last_err = format!("写入后JSON解析失败(第{}次)", attempt + 1); }
+        }
+    }
+    if !written_ok {
+        // 最后兜底: 直接写(非原子), 只要成功就好
+        if let Err(e) = fs::write(&models_path, serde_json::to_string_pretty(&models_json_obj).unwrap_or_default()) {
+            return Err(format!("写入 models.json 失败: {}; 重试错误: {}", e, last_err));
+        }
+        match read_json_file(&models_path) {
+            Some(d) => {
+                let n = d.get("models").and_then(|m| m.as_array()).map(|a| a.len()).unwrap_or(0);
+                if n != expected_count || n == 0 {
+                    return Err(format!("models.json 写入异常: 期望{}个模型, 实际{}个", expected_count, n));
+                }
+            }
+            None => return Err("models.json 写入后无法解析".into()),
+        }
+    }
 
     // 写入 local_storage/entry_*.info (WorkBuddy 实际运行时读取的配置文件)
     let ls_dir = wb_dir.join("local_storage");
@@ -985,21 +1049,17 @@ fn deploy_workbuddy(config: &DeployConfig) -> Result<String, String> {
 }
 
 /// 关闭所有 WorkBuddy 进程 (部署前必须关闭, 否则退出时会覆盖 entry 文件)
+/// v23: taskkill 加 /T 连子进程树一起杀; 删除 wmic (Win11 已移除)
 fn kill_workbuddy_processes() {
     #[cfg(target_os = "windows")]
     {
         // 尝试多种可能的进程名
         for proc_name in &["WorkBuddy.exe", "workbuddy.exe", "WorkBuddy"] {
             let _ = std::process::Command::new("taskkill")
-                .args(&["/F", "/IM", proc_name])
+                .args(&["/F", "/T", "/IM", proc_name])
                 .no_window()
                 .output();
         }
-        // 也用 wmic 按命令行匹配 (防止进程名不标准)
-        let _ = std::process::Command::new("wmic")
-            .args(&["process", "where", "name like '%WorkBuddy%'", "call", "terminate"])
-            .no_window()
-            .output();
     }
     #[cfg(target_os = "macos")]
     {
@@ -1012,6 +1072,51 @@ fn kill_workbuddy_processes() {
     }
     // 等待进程完全退出和文件句柄释放 (3秒确保充分退出)
     std::thread::sleep(std::time::Duration::from_millis(3000));
+}
+
+/// v23: 强化版关闭 — kill 后循环确认进程真正退出(最多15秒)
+/// 防止 Electron 多进程未完全退出导致文件句柄未释放 → models.json 写空
+fn kill_workbuddy_processes_verified() {
+    kill_workbuddy_processes(); // 原有的 kill + 3秒等待
+    #[cfg(target_os = "windows")]
+    {
+        for _ in 0..12 {
+            let out = std::process::Command::new("tasklist")
+                .args(&["/FI", "IMAGENAME eq WorkBuddy.exe", "/NH"])
+                .no_window()
+                .output();
+            let alive = match out {
+                Ok(o) => String::from_utf8_lossy(&o.stdout).to_lowercase().contains("workbuddy.exe"),
+                Err(_) => false,
+            };
+            if !alive { break; } // 确认退出，提前结束
+            // 还活着 → 再杀一轮
+            for proc_name in &["WorkBuddy.exe", "workbuddy.exe"] {
+                let _ = std::process::Command::new("taskkill")
+                    .args(&["/F", "/T", "/IM", proc_name])
+                    .no_window()
+                    .output();
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        for _ in 0..12 {
+            let out = std::process::Command::new("pgrep")
+                .args(&["-f", "WorkBuddy"])
+                .output();
+            let alive = match out {
+                Ok(o) => !o.stdout.is_empty(),
+                Err(_) => false,
+            };
+            if !alive { break; }
+            let _ = std::process::Command::new("pkill")
+                .args(&["-9", "-f", "WorkBuddy"])
+                .output();
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+        }
+    }
 }
 
 /// 在 local_storage 目录中找到所有 entry_*.info / wb_entry_*.info 文件
@@ -2130,8 +2235,8 @@ fn clear_platform_deploy(platform: String, reasoning_level: String) -> Result<St
             Ok("CodeBuddy CN 配置已清除".into())
         }
         "workbuddy" => {
-            // 关闭 WorkBuddy 避免覆盖
-            kill_workbuddy_processes();
+            // 关闭 WorkBuddy 避免覆盖 (v23: 强化版循环确认退出)
+            kill_workbuddy_processes_verified();
             // 从 entry_*.info 中移除我们的 custom-local: 模型
             let wb_dir = dirs::home_dir().ok_or("无法获取用户目录")?.join(".workbuddy");
             let ls_dir = wb_dir.join("local_storage");
@@ -2697,7 +2802,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 22;
+const APP_VERSION: u32 = 23;
 
 /// 获取当前软件版本号
 #[tauri::command]

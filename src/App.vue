@@ -298,6 +298,10 @@ const guideVideos = [
 ];
 
 const CHANGELOG = {
+  23: [
+    "修复部分用户部署后 models.json 为空的严重问题：原子写入+读回验证+3次重试",
+    "部署前强化关闭 WorkBuddy（循环确认进程真正退出，最多15秒）",
+  ],
   22: [
     "DeepSeek V4 Flash 升级为 V4.1：模型更新为 deepseek-v4.1-flash",
   ],
