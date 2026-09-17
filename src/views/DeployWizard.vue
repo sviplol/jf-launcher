@@ -266,14 +266,8 @@ async function doDeploy() {
         if (p === "workbuddy" && typeof result === "string" && result.startsWith("[热加载]")) {
           workbuddyHotLoaded.value = true;
         }
-        // v25: 捕获 Qoder BYOK 引导标识, 生成引导页数据
-        if ((p === "qoder" || p === "qodercn") && typeof result === "string" && result.startsWith("[BYOK引导]")) {
-          qoderGuide.value = {
-            name: PLATFORMS[p]?.name || "Qoder",
-            baseUrl: baseUrl + "/v1",
-            models: QODER_MODELS,
-          };
-        }
+        // v26: Qoder 部署直接写 settings.json, 不需要引导页
+        // (旧 BYOK 引导逻辑已废弃, 模型已自动写入)
       } catch(e) {
         deployResults.value.push({ platform: p, success: false, error: e.message });
       }

@@ -425,19 +425,16 @@ fn deploy_to_platform(config: DeployConfig) -> Result<String, String> {
     }
 }
 
-/// Qoder 部署（海外版/CN版同构）: BYOK 机制 — Qoder 不读本地 SQL/配置文件,
-/// 模型只能经 UI 的 create_byok_config RPC 写入云端目录。
-/// 部署工具职责: 检测安装 + 生成 BYOK 引导信息(base_url/key/模型清单), 前端展示引导页。
+/// Qoder 部署（海外版/CN版同构）: 直接写 settings.json 的 providers 字段
+/// v26: 零人工写入 — CN版就地升级已有provider, 海外版新建/升级, 36个模型自动配置
 fn deploy_qoder(config: &DeployConfig) -> Result<String, String> {
     let cn = config.deploy_type == "qodercn";
     let dir_name = if cn { ".qoder-cn" } else { ".qoder" };
     let version_name = if cn { "Qoder CN版" } else { "Qoder 海外版" };
 
-    // 1. 检测数据目录
     let home = dirs::home_dir().ok_or("无法获取用户目录")?;
     let qd = home.join(dir_name);
     if !qd.exists() {
-        // 兜底: AppData 配置目录
         let appdata_name = if cn { "com.qodercn.app.stable" } else { "com.qoder.app.stable" };
         let ad = dirs::config_dir().map(|d| d.join(appdata_name)).unwrap_or_default();
         if !ad.exists() {
@@ -445,46 +442,136 @@ fn deploy_qoder(config: &DeployConfig) -> Result<String, String> {
         }
     }
 
-    // 2. base_url 带 /v1
+    // base_url 带 /v1
     let qd_url = if config.base_url.ends_with("/v1") {
         config.base_url.clone()
     } else {
         format!("{}/v1", config.base_url.trim_end_matches('/'))
     };
 
-    // 3. BYOK 模型清单(名称/上下文/推理) — 中转 roster 精选, qwen系列已由服务端反代到 hy4
-    let models = [
-        ("glm-5.3", 1000000, true),
-        ("glm-5.2", 1000000, true),
-        ("kimi-k3", 1000000, true),
-        ("kimi-k2.7", 256000, true),
-        ("deepseek-v4-pro", 1000000, true),
-        ("deepseek-v4.1-flash", 1000000, true),
-        ("minimax-m3", 512000, false),
-        ("auto", 200000, false),
-        ("hy4-preview", 192000, true),
-        // 以下直接填 Qoder 原生模型名, 服务端自动反代映射(qwen→hy4)
-        ("qwen3.8-max", 200000, true),
-        ("qwen3.7-max", 200000, true),
-        ("qwen3.7-plus", 200000, false),
+    let settings_path = qd.join("settings.json");
+    // 备份
+    if settings_path.exists() {
+        let _ = fs::copy(&settings_path, qd.join("settings.json.bak_jf"));
+    }
+
+    // 读现有 settings.json
+    let mut settings: serde_json::Value = if settings_path.exists() {
+        read_json_file(&settings_path).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+    if settings.get("providers").is_none() {
+        settings["providers"] = serde_json::json!({});
+    }
+
+    // 构建36个模型数组 (参数来自 /api/models 真实值 + 同家族补齐)
+    let model_specs: &[(&str, u64, u64, bool, bool)] = &[
+        ("glm-5.3", 1000000, 131072, false, true),
+        ("glm-5.3-flash", 128000, 8192, false, true),
+        ("glm-5.2", 1000000, 131072, false, true),
+        ("glm-5.1", 1000000, 131072, false, true),
+        ("glm-5.0-turbo", 128000, 8192, false, false),
+        ("glm-5v-turbo", 1000000, 131072, true, true),
+        ("glm-4.7", 200000, 48000, false, true),
+        ("glm-4.6", 168000, 32000, false, true),
+        ("deepseek-v3", 128000, 8192, false, false),
+        ("deepseek-r1", 128000, 8192, false, true),
+        ("deepseek-v3.2", 128000, 8192, false, false),
+        ("deepseek-v3-2-volc", 96000, 32000, false, true),
+        ("deepseek-v4-flash", 1000000, 384000, false, true),
+        ("deepseek-v4-pro", 1000000, 384000, false, true),
+        ("deepseek-v4.1-flash", 1000000, 384000, false, true),
+        ("kimi-k2.5", 256000, 256000, false, true),
+        ("kimi-k2.6", 262144, 262144, false, true),
+        ("kimi-k2.7", 262144, 262144, false, true),
+        ("kimi-k2-thinking", 256000, 256000, false, true),
+        ("kimi-k3", 1000000, 32000, false, true),
+        ("kimi-k3-1", 1000000, 32000, false, true),
+        ("minimax-m2.5", 200000, 48000, false, false),
+        ("minimax-m2.7", 128000, 8192, false, false),
+        ("minimax-m3", 1000000, 524288, false, false),
+        ("hy3-preview", 128000, 8192, false, true),
+        ("hy4-preview", 192000, 128000, false, true),
+        ("hunyuan-chat", 128000, 8192, false, false),
+        ("hunyuan-2.0-thinking", 128000, 24000, false, true),
+        ("hunyuan-2.0-instruct", 128000, 16000, false, false),
+        ("qwen3.7-max", 200000, 8192, false, true),
+        ("qwen3.7-plus", 200000, 8192, false, false),
+        ("qwen3.8-max", 200000, 8192, false, true),
+        ("auto", 200000, 8192, false, false),
+        ("fast-model", 200000, 48000, false, true),
+        ("balanced-model", 200000, 48000, false, true),
+        ("deep-model", 200000, 48000, false, true),
     ];
 
-    // 4. 生成引导文本(前端展示 + 复制)
-    let mut guide = String::new();
-    guide.push_str(&format!("{} BYOK 配置引导\n", version_name));
-    guide.push_str("步骤: 打开 Qoder → Settings(设置) → Models(模型) → Add custom model(BYOK)\n");
-    guide.push_str(&format!("Endpoint: {}\n", qd_url));
-    guide.push_str("API Key: (你的部署工具已生成, 见引导页)\n");
-    guide.push_str("Provider/Style: OpenAI\n");
-    guide.push_str("逐条添加模型(model_key):\n");
-    for (m, ctx, reasoning) in &models {
-        let r = if *reasoning { "推理✓" } else { "—" };
-        guide.push_str(&format!("  {} (上下文{}K, {})\n", m, ctx / 1000, r));
-    }
-    let _ = guide;
+    let models_json: Vec<serde_json::Value> = model_specs.iter().map(|(mid, ctx, maxout, vision, reasoning)| {
+        serde_json::json!({
+            "model": mid,
+            "displayName": mid,
+            "contextWindow": ctx,
+            "maxOutputTokens": maxout,
+            "capabilities": {
+                "vision": vision,
+                "thinking": {
+                    "modes": ["enabled"],
+                    "supportsEffort": true,
+                    "supportedEffortLevels": ["low", "medium", "high", "xhigh"]
+                }
+            }
+        })
+    }).collect();
 
-    // 5. 返回成功消息(带标识, 前端据此显示 BYOK 引导页)
-    Ok(format!("[BYOK引导] {}: 已就绪 — 请按引导页在 Qoder 设置里添加自定义模型 (Endpoint: {}, 共{}个模型)", version_name, qd_url, models.len()))
+    let new_provider = serde_json::json!({
+        "baseUrl": qd_url,
+        "apiKey": config.api_key,
+        "type": "openai-compatible",
+        "protocol": "openai",
+        "authType": "bearer",
+        "model": "fast-model",
+        "models": models_json
+    });
+
+    // 找已有的 NB/jf provider 就地升级, 没有就新建
+    let mut action_pid = String::new();
+    let mut found = false;
+    if let Some(providers) = settings.get("providers").and_then(|p| p.as_object()) {
+        for (pid, p) in providers {
+            let url = p.get("baseUrl").and_then(|v| v.as_str()).unwrap_or("");
+            if url.contains("ainb7.com") || url.contains("2bbb.cn") {
+                action_pid = pid.clone();
+                found = true;
+                break;
+            }
+        }
+    }
+    if !found {
+        action_pid = format!("qoder-custom-{}", uuid_v4());
+    }
+    if let Some(providers) = settings.get_mut("providers").and_then(|p| p.as_object_mut()) {
+        providers.insert(action_pid.clone(), new_provider);
+    }
+
+    // 原子写入
+    let tmp = settings_path.with_extension("json.tmp");
+    let serialized = serde_json::to_string_pretty(&settings).map_err(|e| format!("序列化失败: {}", e))?;
+    fs::write(&tmp, &serialized).map_err(|e| format!("写入临时文件失败: {}", e))?;
+    fs::rename(&tmp, &settings_path).map_err(|e| format!("替换 settings.json 失败: {}", e))?;
+
+    Ok(format!("{}: {}个模型已写入 settings.json ({}: {})", version_name, model_specs.len(), if found {"就地升级"} else {"新建"}, action_pid))
+}
+
+/// 简单 UUID v4 生成(不依赖外部crate)
+fn uuid_v4() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let mut bytes = [0u8; 16];
+    let t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos();
+    for i in 0..16 { bytes[i] = ((t >> (i*4)) & 0xFF) as u8; }
+    bytes[6] = (bytes[6] & 0x0F) | 0x40;
+    bytes[8] = (bytes[8] & 0x3F) | 0x80;
+    format!("{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+        bytes[0],bytes[1],bytes[2],bytes[3],bytes[4],bytes[5],bytes[6],bytes[7],
+        bytes[8],bytes[9],bytes[10],bytes[11],bytes[12],bytes[13],bytes[14],bytes[15])
 }
 
 /// OpenCode 部署: 修改 opencode.json + opencode.global.dat
@@ -3043,7 +3130,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 25;
+const APP_VERSION: u32 = 26;
 
 /// 获取当前软件版本号
 #[tauri::command]
