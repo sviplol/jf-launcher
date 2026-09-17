@@ -180,22 +180,7 @@
       </button>
     </div>
 
-    <!-- 更新内容弹窗 -->
-    <div v-if="changelogShow" class="wb-modal-overlay">
-      <div class="wb-modal changelog-modal">
-        <div class="changelog-header">
-          <span class="changelog-icon">🎉</span>
-          <h2>JF自动部署 更新到 v{{ appVersion }}</h2>
-        </div>
-        <div class="changelog-list">
-          <div v-for="(item, i) in (CHANGELOG[appVersion] || [])" :key="i" class="changelog-item">
-            <span class="changelog-dot">•</span>
-            <span>{{ item }}</span>
-          </div>
-        </div>
-        <button class="wb-btn-primary" @click="dismissChangelog">知道了，开始使用</button>
-      </div>
-    </div>
+    <!-- 更新内容弹窗已永久取消 -->
 
     <!-- 强制更新弹窗 -->
     <div v-if="updateInfo.show" class="wb-modal-overlay">
@@ -298,10 +283,7 @@ const guideVideos = [
 ];
 
 const CHANGELOG = {
-  25: [
-    "新增 Qoder 海外版 + CN版 双平台支持（BYOK 接入，配置引导页一键复制）",
-    "Qoder 全模型覆盖：qwen 系列自动映射混元HY4，其余透传",
-  ],
+  25: [],
   24: [
     "WorkBuddy 模型热加载：后台运行中部署无需重启，模型列表即时生效",
     "运行中自动通过进程定位 models.json 真实存放位置",
@@ -447,11 +429,11 @@ async function checkForUpdate() {
     const v = await invoke("get_app_version");
     appVersion.value = v;
 
-    // 检查是否需要显示更新内容弹窗
+    // 更新公告弹窗已永久取消 — 不再展示任何版本的 CHANGELOG
+    // (保留 lastSeenVersion 记录避免旧逻辑残留)
     const saved = store.get();
-    const lastSeen = saved.lastSeenVersion || 0;
-    if (v > lastSeen && CHANGELOG[v]) {
-      changelogShow.value = true;
+    if (saved.lastSeenVersion !== v) {
+      store.set({ ...saved, lastSeenVersion: v });
     }
 
     const r = await invoke("check_update");
