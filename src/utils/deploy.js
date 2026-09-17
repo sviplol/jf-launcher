@@ -51,6 +51,20 @@ export const PLATFORMS = {
     color: "#FA541C",
     url: "https://qclaw.cn",
   },
+  qoder: {
+    name: "Qoder 海外版",
+    icon: "🌍",
+    desc: "Qoder 全球版 (qoder.com)",
+    color: "#7C3AED",
+    url: "https://qoder.com",
+  },
+  qodercn: {
+    name: "Qoder CN版",
+    icon: "🇨🇳",
+    desc: "Qoder 国内版 (qoder.com.cn)",
+    color: "#10B981",
+    url: "https://qoder.com.cn",
+  },
 };
 
 export const REASONING_LEVELS = [

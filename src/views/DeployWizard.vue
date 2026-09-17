@@ -74,6 +74,26 @@
           <div class="wb-hotload-sub">如模型列表暂未出现或显示为空，请等 3 秒后重新点开下拉列表（WorkBuddy 正在同步配置）</div>
         </div>
 
+        <!-- Qoder BYOK 配置引导页 -->
+        <div v-if="qoderGuide" class="qoder-guide-section">
+          <div class="qoder-guide-title">🎯 {{ qoderGuide.name }} BYOK 配置引导（最后一步，跟着做）</div>
+          <div class="qoder-guide-steps">
+            <div>1. 打开 {{ qoderGuide.name }} → <b>Settings(设置) → Models(模型) → Add custom model / BYOK</b></div>
+            <div>2. 填入接入信息：
+              <div class="qoder-guide-field">Endpoint 地址：<code>{{ qoderGuide.baseUrl }}</code> <button class="qoder-copy-btn" @click="copyText(qoderGuide.baseUrl)">复制</button></div>
+              <div class="qoder-guide-field">API Key：<code>{{ apiKey.slice(0,8) }}****</code> <button class="qoder-copy-btn" @click="copyText(apiKey)">复制完整Key</button></div>
+              <div class="qoder-guide-field">Provider / Style：<b>OpenAI</b></div>
+            </div>
+            <div>3. 逐条添加模型（model_key 照填，qwen 系列已自动映射到混元HY4）：
+              <div class="qoder-models">
+                <span v-for="m in qoderGuide.models" :key="m" class="qoder-model-tag">{{ m }}</span>
+              </div>
+              <button class="qoder-copy-btn" @click="copyText(qoderGuide.models.join('\n'))">复制全部模型名</button>
+            </div>
+            <div>4. 配置完成 → 模型选择器出现新模型 → 直接对话测试 ✅</div>
+          </div>
+        </div>
+
         <div v-else-if="successPlatforms.length > 0" class="wb-restart-section">
           <div class="wb-restart-title">🔄 配置已写入，请重启以下软件使配置生效：</div>
           <div class="wb-restart-buttons">
@@ -169,6 +189,15 @@ const installed = ref({});
 const selectedPlatforms = ref([]);
 const deploying = ref(false);
 const workbuddyHotLoaded = ref(false); // v24: WorkBuddy 热加载模式(运行中部署无需重启)
+const qoderGuide = ref(null); // v25: Qoder 海外/CN版 BYOK 配置引导
+
+// Qoder BYOK 模型清单（服务端已做 qwen→hy4 反代映射）
+const QODER_MODELS = ["glm-5.3","glm-5.2","kimi-k3","kimi-k2.7","deepseek-v4-pro","deepseek-v4.1-flash","minimax-m3","auto","hy4-preview","qwen3.8-max","qwen3.7-max","qwen3.7-plus"];
+
+function copyText(t) {
+  try { navigator.clipboard.writeText(t); showToast("已复制到剪贴板", "success"); }
+  catch(e) { showToast("复制失败，请手动选择复制", "error"); }
+}
 const deployResults = ref([]);
 const showVideo = ref(false);
 const toast = ref({ show: false, msg: "", type: "info" });
@@ -236,6 +265,14 @@ async function doDeploy() {
         // v24: 捕获热加载标识(Rust 返回 "[热加载] WorkBuddy: ...")
         if (p === "workbuddy" && typeof result === "string" && result.startsWith("[热加载]")) {
           workbuddyHotLoaded.value = true;
+        }
+        // v25: 捕获 Qoder BYOK 引导标识, 生成引导页数据
+        if ((p === "qoder" || p === "qodercn") && typeof result === "string" && result.startsWith("[BYOK引导]")) {
+          qoderGuide.value = {
+            name: PLATFORMS[p]?.name || "Qoder",
+            baseUrl: baseUrl + "/v1",
+            models: QODER_MODELS,
+          };
         }
       } catch(e) {
         deployResults.value.push({ platform: p, success: false, error: e.message });
@@ -399,6 +436,18 @@ async function restartApp(platformKey) {
 .wb-toast.success { background:var(--wb-primary); }
 .wb-toast.error { background:#f53f3f; }
 .fade-enter-active, .fade-leave-active { transition:opacity .3s; }
+
+/* v25 Qoder BYOK 引导页 */
+.qoder-guide-section { margin:16px 0; padding:16px 18px; background:#f0f5ff; border:1px solid #2f54eb; border-radius:10px; text-align:left; }
+.qoder-guide-title { font-weight:bold; color:#1d39c4; margin-bottom:10px; font-size:14px; }
+.qoder-guide-steps { font-size:13px; color:#333; line-height:2; }
+.qoder-guide-steps b { color:#1d39c4; }
+.qoder-guide-field { margin:4px 0 4px 18px; }
+.qoder-guide-field code { background:#fff; border:1px solid #d9d9d9; padding:2px 8px; border-radius:4px; font-size:12px; }
+.qoder-copy-btn { margin-left:6px; padding:2px 10px; font-size:11px; border:1px solid #2f54eb; background:#fff; color:#2f54eb; border-radius:4px; cursor:pointer; }
+.qoder-copy-btn:hover { background:#2f54eb; color:#fff; }
+.qoder-models { margin:6px 0 6px 18px; display:flex; flex-wrap:wrap; gap:5px; max-width:100%; }
+.qoder-model-tag { background:#fff; border:1px solid #adc6ff; padding:2px 9px; border-radius:10px; font-size:11px; font-family:Consolas,monospace; color:#2f54eb; }
 
 /* v24 热加载横幅 */
 .wb-hotload-banner { margin:16px 0; padding:14px 18px; background:#e8ffea; border:1px solid #00b42a; border-radius:10px; color:#00832a; font-size:15px; text-align:center; }

@@ -298,6 +298,10 @@ const guideVideos = [
 ];
 
 const CHANGELOG = {
+  25: [
+    "新增 Qoder 海外版 + CN版 双平台支持（BYOK 接入，配置引导页一键复制）",
+    "Qoder 全模型覆盖：qwen 系列自动映射混元HY4，其余透传",
+  ],
   24: [
     "WorkBuddy 模型热加载：后台运行中部署无需重启，模型列表即时生效",
     "运行中自动通过进程定位 models.json 真实存放位置",

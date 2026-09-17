@@ -217,7 +217,34 @@ fn detect_all_platforms() -> std::collections::HashMap<String, DetectResult> {
     r.insert("workbuddy".into(), detect_workbuddy());
     r.insert("clawcode".into(), detect_claw_code());
     r.insert("trae".into(), detect_trae());
+    r.insert("qoder".into(), detect_qoder(false));
+    r.insert("qodercn".into(), detect_qoder(true));
     r
+}
+
+/// Qoder: 海外版 ~/.qoder / CN版 ~/.qoder-cn（BYOK 机制，数据目录存在即算安装）
+fn detect_qoder(cn: bool) -> DetectResult {
+    let dir_name = if cn { ".qoder-cn" } else { ".qoder" };
+    if let Some(home) = dirs::home_dir() {
+        let qd = home.join(dir_name);
+        if qd.exists() { return DetectResult { installed: true, path: Some(qd.to_string_lossy().into()) }; }
+    }
+    // AppData 配置目录
+    let appdata_name = if cn { "com.qodercn.app.stable" } else { "com.qoder.app.stable" };
+    if let Some(ad) = dirs::config_dir() {
+        let p = ad.join(appdata_name);
+        if p.exists() { return DetectResult { installed: true, path: Some(p.to_string_lossy().into()) }; }
+    }
+    // 进程检测
+    #[cfg(target_os = "windows")]
+    {
+        let proc = if cn { "Qoder CN.exe" } else { "Qoder.exe" };
+        if check_process(proc) {
+            let default = dirs::home_dir().map(|d| d.join(dir_name)).unwrap_or_default();
+            return DetectResult { installed: true, path: Some(default.to_string_lossy().into()) };
+        }
+    }
+    DetectResult { installed: false, path: None }
 }
 
 /// 通用：检测进程名（静默，无黑框）
@@ -393,8 +420,71 @@ fn deploy_to_platform(config: DeployConfig) -> Result<String, String> {
         "workbuddy" => deploy_workbuddy(&config),
         "clawcode" => deploy_claw_code(&config),
         "trae" => deploy_trae(&config),
+        "qoder" | "qodercn" => deploy_qoder(&config),
         _ => Err("未知平台".into()),
     }
+}
+
+/// Qoder 部署（海外版/CN版同构）: BYOK 机制 — Qoder 不读本地 SQL/配置文件,
+/// 模型只能经 UI 的 create_byok_config RPC 写入云端目录。
+/// 部署工具职责: 检测安装 + 生成 BYOK 引导信息(base_url/key/模型清单), 前端展示引导页。
+fn deploy_qoder(config: &DeployConfig) -> Result<String, String> {
+    let cn = config.deploy_type == "qodercn";
+    let dir_name = if cn { ".qoder-cn" } else { ".qoder" };
+    let version_name = if cn { "Qoder CN版" } else { "Qoder 海外版" };
+
+    // 1. 检测数据目录
+    let home = dirs::home_dir().ok_or("无法获取用户目录")?;
+    let qd = home.join(dir_name);
+    if !qd.exists() {
+        // 兜底: AppData 配置目录
+        let appdata_name = if cn { "com.qodercn.app.stable" } else { "com.qoder.app.stable" };
+        let ad = dirs::config_dir().map(|d| d.join(appdata_name)).unwrap_or_default();
+        if !ad.exists() {
+            return Err(format!("未检测到 {} 数据目录({}), 请先安装并登录一次 {}", version_name, qd.display(), version_name));
+        }
+    }
+
+    // 2. base_url 带 /v1
+    let qd_url = if config.base_url.ends_with("/v1") {
+        config.base_url.clone()
+    } else {
+        format!("{}/v1", config.base_url.trim_end_matches('/'))
+    };
+
+    // 3. BYOK 模型清单(名称/上下文/推理) — 中转 roster 精选, qwen系列已由服务端反代到 hy4
+    let models = [
+        ("glm-5.3", 1000000, true),
+        ("glm-5.2", 1000000, true),
+        ("kimi-k3", 1000000, true),
+        ("kimi-k2.7", 256000, true),
+        ("deepseek-v4-pro", 1000000, true),
+        ("deepseek-v4.1-flash", 1000000, true),
+        ("minimax-m3", 512000, false),
+        ("auto", 200000, false),
+        ("hy4-preview", 192000, true),
+        // 以下直接填 Qoder 原生模型名, 服务端自动反代映射(qwen→hy4)
+        ("qwen3.8-max", 200000, true),
+        ("qwen3.7-max", 200000, true),
+        ("qwen3.7-plus", 200000, false),
+    ];
+
+    // 4. 生成引导文本(前端展示 + 复制)
+    let mut guide = String::new();
+    guide.push_str(&format!("{} BYOK 配置引导\n", version_name));
+    guide.push_str("步骤: 打开 Qoder → Settings(设置) → Models(模型) → Add custom model(BYOK)\n");
+    guide.push_str(&format!("Endpoint: {}\n", qd_url));
+    guide.push_str("API Key: (你的部署工具已生成, 见引导页)\n");
+    guide.push_str("Provider/Style: OpenAI\n");
+    guide.push_str("逐条添加模型(model_key):\n");
+    for (m, ctx, reasoning) in &models {
+        let r = if *reasoning { "推理✓" } else { "—" };
+        guide.push_str(&format!("  {} (上下文{}K, {})\n", m, ctx / 1000, r));
+    }
+    let _ = guide;
+
+    // 5. 返回成功消息(带标识, 前端据此显示 BYOK 引导页)
+    Ok(format!("[BYOK引导] {}: 已就绪 — 请按引导页在 Qoder 设置里添加自定义模型 (Endpoint: {}, 共{}个模型)", version_name, qd_url, models.len()))
 }
 
 /// OpenCode 部署: 修改 opencode.json + opencode.global.dat
@@ -2953,7 +3043,7 @@ fn get_error_info(code: &str) -> serde_json::Value {
 }
 
 /// 软件版本号（每次发布递增，与远程 /api/fastmmd/version 的 version 字段比对）
-const APP_VERSION: u32 = 24;
+const APP_VERSION: u32 = 25;
 
 /// 获取当前软件版本号
 #[tauri::command]
